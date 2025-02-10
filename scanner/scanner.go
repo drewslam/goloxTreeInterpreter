@@ -64,9 +64,65 @@ func (s *Scanner) scanToken() {
 		s.addToken(token.SEMICOLON)
 	case '*':
 		s.addToken(token.STAR)
+	case '!':
+		if s.match('=') {
+			s.addToken(token.BANG_EQUAL)
+		} else {
+			s.addToken(token.BANG)
+		}
+	case '=':
+		if s.match('=') {
+			s.addToken(token.EQUAL_EQUAL)
+		} else {
+			s.addToken(token.EQUAL)
+		}
+	case '<':
+		if s.match('=') {
+			s.addToken(token.LESS_EQUAL)
+		} else {
+			s.addToken(token.LESS)
+		}
+	case '>':
+		if s.match('=') {
+			s.addToken(token.GREATER_EQUAL)
+		} else {
+			s.addToken(token.GREATER)
+		}
+	case '/':
+		if s.match('/') {
+			// A comment goes until the end of the lijne
+			for s.peek() != '\n' && !s.isAtEnd() {
+				s.advance()
+			}
+		} else {
+			s.addToken(token.SLASH)
+		}
+	case ' ', '\r', '\t':
+		// Ignore whitespace
+	case '\n':
+		s.Line++
 	default:
 		errors.ReportError(s.Line, "Unexpected character.")
 	}
+}
+
+func (s *Scanner) match(expected byte) bool {
+	if s.isAtEnd() {
+		return false
+	}
+	if s.Source[s.Current] != expected {
+		return false
+	}
+
+	s.Current++
+	return true
+}
+
+func (s *Scanner) peek() byte {
+	if s.isAtEnd() {
+		return '\x00'
+	}
+	return s.Source[s.Current]
 }
 
 func (s *Scanner) advance() byte {
