@@ -9,9 +9,14 @@ type Expr interface {
 }
 
 type ExprVisitor interface {
+	VisitAssignExpr(expr *Assign) interface{}
 	VisitBinaryExpr(expr *Binary) interface{}
+	VisitCallExpr(expr *Call) interface{}
+	VisitGetExpr(expr *Get) interface{}
 	VisitGroupingExpr(expr *Grouping) interface{}
 	VisitLiteralExpr(expr *Literal) interface{}
+	VisitLogicalExpr(expr *Logical) interface{}
+	VisitSetExpr(expr *Set) interface{}
 	VisitUnaryExpr(expr *Unary) interface{}
 }
 
