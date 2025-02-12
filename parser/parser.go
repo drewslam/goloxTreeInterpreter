@@ -72,7 +72,7 @@ func (p *Parser) factor() ast.Expr {
 	for p.match(token.SLASH, token.STAR) {
 		operator := p.previous()
 		right := p.unary()
-		expr := &ast.Binary{
+		expr = &ast.Binary{
 			Left:     expr,
 			Operator: operator,
 			Right:    right,
@@ -127,7 +127,7 @@ func (p *Parser) primary() ast.Expr {
 	}
 
 	// Error handling if no valid expression is found
-	errors.ReportError(p.peek().Line, "Expect expression.")
+	errors.Error(p.peek(), "Expect expression.")
 	return nil
 }
 
@@ -139,6 +139,15 @@ func (p *Parser) match(types ...token.TokenType) bool {
 		}
 	}
 	return false
+}
+
+func (p *Parser) consume(tokentype token.TokenType, message string) token.Token {
+	if p.check(tokentype) {
+		return p.advance()
+	}
+
+	errors.ParseError(p.peek(), message)
+	return token.Token{}
 }
 
 func (p *Parser) check(tokentype token.TokenType) bool {
@@ -166,4 +175,21 @@ func (p *Parser) peek() token.Token {
 
 func (p *Parser) previous() token.Token {
 	return p.tokens[p.current-1]
+}
+
+func (p *Parser) synchronize() {
+	p.advance()
+
+	for !p.isAtEnd() {
+		if p.previous().Type == token.SEMICOLON {
+			return
+		}
+
+		switch p.peek().Type {
+		case token.CLASS, token.FUN, token.VAR, token.FOR, token.IF, token.WHILE, token.PRINT, token.RETURN:
+			return
+		}
+
+		p.advance()
+	}
 }
