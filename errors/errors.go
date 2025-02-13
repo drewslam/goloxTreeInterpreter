@@ -6,21 +6,44 @@ import (
 	"github.com/drewslam/goloxTreeInterpreter/token"
 )
 
-// HadError tracks whether an error has occured
+// HadError tracks whether a syntax error has occured
 var HadError bool = false
+var HadRuntimeError bool = false
 
-// ParseError is a custom error type for parser errors
+// ParseError is a custom error type for parser errors.
 type ParseError struct {
 	Message string
 }
 
+// RuntimeError is a custom error type for runtime errors.
+type RuntimeError struct {
+	Token   token.Token
+	Message string
+}
+
+// Error implements the error interface for ParseErrorr.
 func (e *ParseError) Error() string {
 	return e.Message
 }
 
-// NewParseError creates a new ParseError instance
+// Error implements the error interface for RuntimeError.
+func (r *RuntimeError) Error() string {
+	return fmt.Sprintf("[line %d] %s", r.Token.Line, r.Message)
+}
+
+// NewParseError creates a new ParseError instance and marks HadError as true.
 func NewParseError(message string) *ParseError {
+	HadError = true
 	return &ParseError{Message: message}
+}
+
+// NewRuntimeError creates a new RuntimeError instance and marks HadError as true.
+func NewRuntimeError(token token.Token, message string) *RuntimeError {
+	HadRuntimeError = true
+	return &RuntimeError{
+		Token:   token,
+		Message: message,
+	}
 }
 
 // ParseError function to report an error for a specific token and panic with a ParseError

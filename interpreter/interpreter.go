@@ -2,6 +2,7 @@ package interpreter
 
 import (
 	"github.com/drewslam/goloxTreeInterpreter/ast"
+	"github.com/drewslam/goloxTreeInterpreter/errors"
 	"github.com/drewslam/goloxTreeInterpreter/token"
 )
 
@@ -71,11 +72,19 @@ func (i *Interpreter) VisitUnnaryExpr(expr *ast.Unary) interface{} {
 	case token.BANG:
 		return !i.isTruthy(right)
 	case token.MINUS:
+		checkNumberOperand(expr.Operator, right)
 		return -right.(float64)
 	}
 
 	// Unreachable
 	return nil
+}
+
+func (i *Interpreter) checkNumberOperand(operator token.Token, operand interface{}) {
+	if _, ok := operand.(float64); ok {
+		return
+	}
+	panic(errors.NewRuntimeError(operator, "Operand must be a number."))
 }
 
 func (i *Interpreter) isTruthy(object interface{}) bool {
