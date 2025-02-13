@@ -24,14 +24,19 @@ func (i *Interpreter) VisitBinaryExpr(expr *ast.Binary) interface{} {
 	case token.EQUAL_EQUAL:
 		return i.isEqual(left, right)
 	case token.GREATER:
+		i.checkNumberOperands(expr.Operator, left, right)
 		return left.(float64) > right.(float64)
 	case token.GREATER_EQUAL:
+		i.checkNumberOperands(expr.Operator, left, right)
 		return left.(float64) >= right.(float64)
 	case token.LESS:
+		i.checkNumberOperands(expr.Operator, left, right)
 		return left.(float64) < right.(float64)
 	case token.LESS_EQUAL:
+		i.checkNumberOperands(expr.Operator, left, right)
 		return left.(float64) <= right.(float64)
 	case token.MINUS:
+		i.checkNumberOperands(expr.Operator, left, right)
 		return left.(float64) - right.(float64)
 	case token.PLUS:
 		if leftVal, ok := left.(float64); ok {
@@ -44,9 +49,12 @@ func (i *Interpreter) VisitBinaryExpr(expr *ast.Binary) interface{} {
 				return leftVal + rightVal
 			}
 		}
+		panic(errors.NewRuntimeError(expr.Operator, "Operands must be two numbers or two strings."))
 	case token.SLASH:
+		i.checkNumberOperands(expr.Operator, left, right)
 		return left.(float64) / right.(float64)
 	case token.STAR:
+		i.checkNumberOperands(expr.Operator, left, right)
 		return left.(float64) * right.(float64)
 	}
 
@@ -72,7 +80,7 @@ func (i *Interpreter) VisitUnnaryExpr(expr *ast.Unary) interface{} {
 	case token.BANG:
 		return !i.isTruthy(right)
 	case token.MINUS:
-		checkNumberOperand(expr.Operator, right)
+		i.checkNumberOperand(expr.Operator, right)
 		return -right.(float64)
 	}
 
@@ -85,6 +93,15 @@ func (i *Interpreter) checkNumberOperand(operator token.Token, operand interface
 		return
 	}
 	panic(errors.NewRuntimeError(operator, "Operand must be a number."))
+}
+
+func (i *Interpreter) checkNumberOperands(operator token.Token, left interface{}, right interface{}) {
+	if _, ok := left.(float64); ok {
+		if _, ok := right.(float64); ok {
+			return
+		}
+	}
+	panic(errors.NewRuntimeError(operator, "Operands must be two numbers."))
 }
 
 func (i *Interpreter) isTruthy(object interface{}) bool {
