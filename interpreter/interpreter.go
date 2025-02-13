@@ -1,6 +1,8 @@
 package interpreter
 
 import (
+	"fmt"
+
 	"github.com/drewslam/goloxTreeInterpreter/ast"
 	"github.com/drewslam/goloxTreeInterpreter/errors"
 	"github.com/drewslam/goloxTreeInterpreter/token"
@@ -8,6 +10,21 @@ import (
 
 type Interpreter struct {
 	object ast.ExprVisitor
+}
+
+func (i *Interpreter) Interpret(expr ast.Expr) {
+	defer func() {
+		if r := recover(); r != nil {
+			if runtimeErr, ok := r.(*errors.RuntimeError); ok {
+				i.reportRuntimeError(runtimeErr)
+			} else {
+				panic(r) // Re-panic if it's not a RuntimeError
+			}
+		}
+	}()
+
+	value := i.evaluate(expr)
+	fmt.Println(i.stringify(value))
 }
 
 func (i *Interpreter) evaluate(expr ast.Expr) interface{} {
@@ -123,4 +140,24 @@ func (i *Interpreter) isEqual(a interface{}, b interface{}) bool {
 	}
 
 	return a == b
+}
+
+// stringify converts an evaluated object into a human-readable string
+func (i *Interpreter) stringify(object interface{}) string {
+	if object == nil {
+		return "nil"
+	}
+
+	if val, ok := object.(float64); ok {
+		text := fmt.Sprintf("%g", val)
+		return text
+	}
+
+	return fmt.Sprintf("%v", object)
+}
+
+// reportRuntimeError handles runtime error reporting
+func (i *Interpreter) reportRuntimeError(err *errors.RuntimeError) {
+	fmt.Printf("[line %d] RuntimeError: %s\n", err.Token.Line, err.Message)
+	errors.HadRuntimeError = true
 }

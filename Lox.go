@@ -49,7 +49,11 @@ func run(source string) {
 
 	// Stop if there is a syntax error
 	if errors.HadError {
-		return
+		os.Exit(65)
+	}
+
+	if errors.HadRuntimeError {
+		os.Exit(70)
 	}
 
 	// For now, we'll print the parsed expression
