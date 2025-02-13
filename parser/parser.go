@@ -131,6 +131,22 @@ func (p *Parser) primary() ast.Expr {
 	return nil
 }
 
+func (p *Parser) Parse() ast.Expr {
+	defer func() {
+		if r := recover(); r != nil {
+			// Check if it's a parse error
+			if _, ok := r.(*errors.ParseError); ok {
+				// Return nil if a ParseError is caught
+				return
+			}
+			// Re-panic for unexpected errors
+			panic(r)
+		}
+	}()
+
+	return p.expression()
+}
+
 func (p *Parser) match(types ...token.TokenType) bool {
 	for _, t := range types {
 		if p.check(t) {
@@ -146,7 +162,7 @@ func (p *Parser) consume(tokentype token.TokenType, message string) token.Token 
 		return p.advance()
 	}
 
-	errors.ParseError(p.peek(), message)
+	errors.ReportError(p.peek().Line, message)
 	return token.Token{}
 }
 

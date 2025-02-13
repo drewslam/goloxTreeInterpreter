@@ -6,6 +6,7 @@ import (
 	"os"
 
 	"github.com/drewslam/goloxTreeInterpreter/errors"
+	"github.com/drewslam/goloxTreeInterpreter/parser"
 	"github.com/drewslam/goloxTreeInterpreter/scanner"
 )
 
@@ -34,22 +35,25 @@ func runPrompt() {
 		if line == "\n" {
 			continue
 		}
-		err = run(line)
-		if err != nil {
-			fmt.Println("Error:", err)
-		}
+		run(line)
 		errors.HadError = false
 	}
 }
 
-func run(source string) error {
+func run(source string) {
 	sc := scanner.NewScanner(source)
 	tokens := sc.ScanTokens()
+	pa := parser.Parser{}
+	pa.NewParser(tokens)
+	expr := pa.Parse()
 
-	for _, token := range tokens {
-		fmt.Println(token)
+	// Stop if there is a syntax error
+	if errors.HadError {
+		return
 	}
-	return nil
+
+	// For now, we'll print the parsed expression
+	fmt.Println(expr)
 }
 
 func main() {
