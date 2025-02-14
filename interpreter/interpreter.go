@@ -32,7 +32,10 @@ func (i *Interpreter) Interpret(expr ast.Expr) {
 }
 
 func (i *Interpreter) evaluate(expr ast.Expr) interface{} {
-	return expr.Accept(i.object)
+	if expr == nil {
+		panic("Tried to evaluate a nil expression.")
+	}
+	return expr.Accept(i)
 }
 
 func (i *Interpreter) VisitBinaryExpr(expr *ast.Binary) interface{} {
@@ -93,7 +96,7 @@ func (i *Interpreter) VisitLiteralExpr(expr *ast.Literal) interface{} {
 	return expr.Value
 }
 
-func (i *Interpreter) VisitUnnaryExpr(expr *ast.Unary) interface{} {
+func (i *Interpreter) VisitUnaryExpr(expr *ast.Unary) interface{} {
 	// Handle unary expressions
 	right := i.evaluate(expr.Right)
 

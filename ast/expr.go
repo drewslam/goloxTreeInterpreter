@@ -28,6 +28,9 @@ type Binary struct {
 }
 
 func (b *Binary) Accept(visitor ExprVisitor) interface{} {
+	if visitor == nil {
+		panic("Visitor is nil in Binary.Accept")
+	}
 	return visitor.VisitBinaryExpr(b)
 }
 
@@ -37,6 +40,9 @@ type Grouping struct {
 }
 
 func (g *Grouping) Accept(visitor ExprVisitor) interface{} {
+	if visitor == nil {
+		panic("Visitor is nil in Grouping.Accept")
+	}
 	return visitor.VisitGroupingExpr(g)
 }
 
@@ -46,6 +52,9 @@ type Literal struct {
 }
 
 func (l *Literal) Accept(visitor ExprVisitor) interface{} {
+	if visitor == nil {
+		panic("Visitor is nil in Literal.Accept")
+	}
 	return visitor.VisitLiteralExpr(l)
 }
 
@@ -56,5 +65,8 @@ type Unary struct {
 }
 
 func (u *Unary) Accept(visitor ExprVisitor) interface{} {
+	if visitor == nil {
+		panic("Visitor is nil in Unary.Accept")
+	}
 	return visitor.VisitUnaryExpr(u)
 }
