@@ -12,6 +12,10 @@ type Interpreter struct {
 	object ast.ExprVisitor
 }
 
+func NewInterpreter() *Interpreter {
+	return &Interpreter{}
+}
+
 func (i *Interpreter) Interpret(expr ast.Expr) {
 	defer func() {
 		if r := recover(); r != nil {
