@@ -10,13 +10,14 @@ import (
 
 type Interpreter struct {
 	object ast.ExprVisitor
+	void   ast.StmtVisitor
 }
 
 func NewInterpreter() *Interpreter {
 	return &Interpreter{}
 }
 
-func (i *Interpreter) Interpret(expr ast.Expr) {
+func (i *Interpreter) Interpret(statements []ast.Stmt) {
 	defer func() {
 		if r := recover(); r != nil {
 			if runtimeErr, ok := r.(*errors.RuntimeError); ok {
@@ -27,8 +28,15 @@ func (i *Interpreter) Interpret(expr ast.Expr) {
 		}
 	}()
 
-	value := i.evaluate(expr)
-	fmt.Println(i.stringify(value))
+	// value := i.evaluate(expr)
+	// fmt.Println(i.stringify(value))
+	for _, stmt := range statements {
+		i.execute(stmt)
+	}
+}
+
+func (i *Interpreter) execute(stmt ast.Stmt) {
+	stmt.Accept(i)
 }
 
 func (i *Interpreter) evaluate(expr ast.Expr) interface{} {
@@ -36,6 +44,17 @@ func (i *Interpreter) evaluate(expr ast.Expr) interface{} {
 		panic("Tried to evaluate a nil expression.")
 	}
 	return expr.Accept(i)
+}
+
+func (i *Interpreter) VisitExpressionStmt(stmt *ast.Expression) interface{} {
+	i.evaluate(stmt.Expr)
+	return nil
+}
+
+func (i *Interpreter) VisitPrintStmt(stmt *ast.Print) interface{} {
+	value := i.evaluate(stmt.Expr)
+	fmt.Println(i.stringify(value))
+	return nil
 }
 
 func (i *Interpreter) VisitBinaryExpr(expr *ast.Binary) interface{} {

@@ -63,7 +63,7 @@ func (l *Lox) run(source string) error {
 
 	parser := &parser.Parser{}
 	parser.NewParser(tokens)
-	expr := parser.Parse()
+	statements := parser.Parse()
 
 	// Stop if there is a syntax error
 	if errors.HadError {
@@ -74,7 +74,7 @@ func (l *Lox) run(source string) error {
 		os.Exit(70)
 	}
 
-	l.interpreter.Interpret(expr)
+	l.interpreter.Interpret(statements)
 	return nil
 }
 

@@ -167,7 +167,7 @@ func (p *Parser) Parse() []ast.Stmt {
 	}()
 
 	for !p.isAtEnd() {
-		stmt := p.statements()
+		stmt := p.statement()
 		if stmt != nil {
 			statements = append(statements, stmt)
 		}
