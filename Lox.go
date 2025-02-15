@@ -93,20 +93,4 @@ func main() {
 		fmt.Println("Usage: golox [script]")
 		os.Exit(64)
 	}
-	/*
-		if argc > 2 {
-			fmt.Println("Usage: golox [script]")
-			os.Exit(64)
-		} else if argc == 2 {
-
-			err := runFile(os.Args[1])
-			if err != nil {
-				fmt.Println("Error running file: ", err)
-				os.Exit(64)
-			}
-		} else {
-
-			runPrompt()
-		}
-	*/
 }

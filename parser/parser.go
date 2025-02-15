@@ -20,6 +20,26 @@ func (p *Parser) expression() ast.Expr {
 	return p.equality()
 }
 
+func (p *Parser) statement() ast.Stmt {
+	if p.match(token.PRINT) {
+		return p.printStatement()
+	}
+
+	return p.expressionStatement()
+}
+
+func (p *Parser) printStatement() ast.Stmt {
+	value := p.expression()
+	p.consume(token.SEMICOLON, "Expect ';' after value.")
+	return ast.NewPrintStmt(value)
+}
+
+func (p *Parser) expressionStatement() ast.Stmt {
+	expr := p.expression()
+	p.consume(token.SEMICOLON, "Expect ';' after expression.")
+	return ast.NewExpressionStmt(expr)
+}
+
 func (p *Parser) equality() ast.Expr {
 	expr := p.comparison()
 
@@ -131,7 +151,9 @@ func (p *Parser) primary() ast.Expr {
 	return nil
 }
 
-func (p *Parser) Parse() ast.Expr {
+func (p *Parser) Parse() []ast.Stmt {
+	var statements []ast.Stmt
+
 	defer func() {
 		if r := recover(); r != nil {
 			// Check if it's a parse error
@@ -144,7 +166,14 @@ func (p *Parser) Parse() ast.Expr {
 		}
 	}()
 
-	return p.expression()
+	for !p.isAtEnd() {
+		stmt := p.statements()
+		if stmt != nil {
+			statements = append(statements, stmt)
+		}
+	}
+
+	return statements
 }
 
 func (p *Parser) match(types ...token.TokenType) bool {
