@@ -1,6 +1,8 @@
 package parser
 
 import (
+	"fmt"
+
 	"github.com/drewslam/goloxTreeInterpreter/ast"
 	"github.com/drewslam/goloxTreeInterpreter/errors"
 	"github.com/drewslam/goloxTreeInterpreter/token"
@@ -29,9 +31,9 @@ func (p *Parser) statement() ast.Stmt {
 }
 
 func (p *Parser) printStatement() ast.Stmt {
-	value := p.expression()
+	expr := p.expression()
 	p.consume(token.SEMICOLON, "Expect ';' after value.")
-	return ast.NewPrintStmt(value)
+	return ast.NewPrintStmt(expr)
 }
 
 func (p *Parser) expressionStatement() ast.Stmt {
@@ -173,6 +175,7 @@ func (p *Parser) Parse() []ast.Stmt {
 		}
 	}
 
+	fmt.Println("Tokens:", p.tokens)
 	return statements
 }
 
@@ -192,6 +195,8 @@ func (p *Parser) consume(tokentype token.TokenType, message string) token.Token 
 	}
 
 	errors.ReportError(p.peek().Line, message)
+	p.synchronize()
+
 	return token.Token{}
 }
 

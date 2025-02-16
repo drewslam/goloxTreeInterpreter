@@ -178,24 +178,25 @@ func (s *Scanner) number() {
 }
 
 func (s *Scanner) string() {
-	for s.peek() != '"' && !s.isAtEnd() {
-		if s.peek() != '\n' {
+	for !s.isAtEnd() && s.peek() != '"' {
+		if s.peek() == '\n' {
 			s.Line++
 		}
 		s.advance()
-
-		if s.isAtEnd() {
-			errors.ReportError(s.Line, "Unterminated string.")
-			return
-		}
-
-		// The closing "
-		s.advance()
-
-		// Trim the surrounding quotes.
-		value := s.Source[s.Start+1 : s.Current-1]
-		s.addToken(token.STRING, value)
 	}
+
+	if s.isAtEnd() {
+		errors.ReportError(s.Line, "Unterminated string.")
+		return
+	}
+
+	// The closing "
+	s.advance()
+
+	// Trim the surrounding quotes.
+	value := s.Source[s.Start+1 : s.Current-1]
+	s.addToken(token.STRING, value)
+
 }
 
 func (s *Scanner) match(expected byte) bool {
