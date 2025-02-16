@@ -17,7 +17,7 @@ type Interpreter struct {
 
 func NewInterpreter() *Interpreter {
 	return &Interpreter{
-		environment: environment.NewEnvrionment(),
+		environment: environment.NewEnvironment(),
 	}
 }
 
@@ -43,6 +43,20 @@ func (i *Interpreter) execute(stmt ast.Stmt) {
 	stmt.Accept(i)
 }
 
+func (i *Interpreter) executeBlock(statements []ast.Stmt, environment *environment.Environment) {
+	previous := i.environment
+	i.environment = environment
+	for _, statement := range statements {
+		i.execute(statement)
+	}
+	i.environment = previous
+}
+
+func (i *Interpreter) VisitBlockStmt(stmt *ast.Block) interface{} {
+	i.executeBlock(stmt.Statements, environment.NewEnvironment(i.environment))
+	return nil
+}
+
 func (i *Interpreter) evaluate(expr ast.Expr) interface{} {
 	if expr == nil {
 		panic("Tried to evaluate a nil expression.")
@@ -62,8 +76,8 @@ func (i *Interpreter) VisitPrintStmt(stmt *ast.Print) interface{} {
 }
 
 func (i *Interpreter) VisitVarStmt(stmt *ast.Var) interface{} {
-	var value interface{}
-	if stmt.Initializer == nil {
+	var value interface{} = nil
+	if stmt.Initializer != nil {
 		value = i.evaluate(stmt.Initializer)
 	}
 
@@ -71,7 +85,7 @@ func (i *Interpreter) VisitVarStmt(stmt *ast.Var) interface{} {
 	return nil
 }
 
-func (i *Interpreter) VisitAssignExpr(expr ast.Assign) interface{} {
+func (i *Interpreter) VisitAssignExpr(expr *ast.Assign) interface{} {
 	value := i.evaluate(expr.Value)
 	i.environment.Assign(expr.Name, value)
 	return value
@@ -151,7 +165,7 @@ func (i *Interpreter) VisitUnaryExpr(expr *ast.Unary) interface{} {
 	return nil
 }
 
-func (i *Interpreter) VisitVariableExpr(expr ast.Variable) interface{} {
+func (i *Interpreter) VisitVariableExpr(expr *ast.Variable) interface{} {
 	return i.environment.Get(expr.Name)
 }
 

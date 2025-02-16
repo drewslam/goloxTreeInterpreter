@@ -7,9 +7,26 @@ type Stmt interface {
 }
 
 type StmtVisitor interface {
+	VisitBlockStmt(stmt *Block) interface{}
 	VisitExpressionStmt(stmt *Expression) interface{}
 	VisitPrintStmt(stmt *Print) interface{}
 	VisitVarStmt(stmt *Var) interface{}
+}
+
+// Block type
+type Block struct {
+	Statements []Stmt
+}
+
+func (b *Block) Accept(visitor StmtVisitor) interface{} {
+	if visitor == nil {
+		panic("Visitor is nil in Block.Accept")
+	}
+	return visitor.VisitBlockStmt(b)
+}
+
+func NewBlockStmt(statements []Stmt) *Block {
+	return &Block{Statements: statements}
 }
 
 // Expression type

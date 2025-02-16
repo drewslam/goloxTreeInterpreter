@@ -44,6 +44,9 @@ func (p *Parser) statement() ast.Stmt {
 	if p.match(token.PRINT) {
 		return p.printStatement()
 	}
+	if p.match(token.LEFT_BRACE) {
+		return &ast.Block{Statements: p.block()}
+	}
 
 	return p.expressionStatement()
 }
@@ -70,6 +73,17 @@ func (p *Parser) expressionStatement() ast.Stmt {
 	expr := p.expression()
 	p.consume(token.SEMICOLON, "Expect ';' after expression.")
 	return ast.NewExpressionStmt(expr)
+}
+
+func (p *Parser) block() []ast.Stmt {
+	var statements []ast.Stmt
+
+	for !p.check(token.RIGHT_BRACE) && !p.isAtEnd() {
+		statements = append(statements, p.declaration())
+	}
+
+	p.consume(token.RIGHT_BRACE, "Expect '}' after block.")
+	return statements
 }
 
 func (p *Parser) assignment() ast.Expr {
