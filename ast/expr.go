@@ -9,7 +9,7 @@ type Expr interface {
 }
 
 type ExprVisitor interface {
-	//	VisitAssignExpr(expr *Assign) interface{}
+	VisitAssignExpr(expr *Assign) interface{}
 	VisitBinaryExpr(expr *Binary) interface{}
 	//	VisitCallExpr(expr *Call) interface{}
 	//	VisitGetExpr(expr *Get) interface{}
@@ -19,6 +19,19 @@ type ExprVisitor interface {
 	//	VisitSetExpr(expr *Set) interface{}
 	VisitUnaryExpr(expr *Unary) interface{}
 	VisitVariableExpr(expr *Variable) interface{}
+}
+
+// Assignment
+type Assign struct {
+	Name  token.Token
+	Value Expr
+}
+
+func (a *Assign) Accept(visitor ExprVisitor) interface{} {
+	if visitor == nil {
+		panic("Visitor is nil in Assign.Accept")
+	}
+	return visitor.VisitAssignExpr(a)
 }
 
 // Binary: Binary Expression: "left operator right"

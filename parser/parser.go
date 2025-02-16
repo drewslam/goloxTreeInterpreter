@@ -17,7 +17,7 @@ func (p *Parser) NewParser(tokens []token.Token) {
 }
 
 func (p *Parser) expression() ast.Expr {
-	return p.equality()
+	return p.assignment()
 }
 
 func (p *Parser) declaration() ast.Stmt {
@@ -70,6 +70,27 @@ func (p *Parser) expressionStatement() ast.Stmt {
 	expr := p.expression()
 	p.consume(token.SEMICOLON, "Expect ';' after expression.")
 	return ast.NewExpressionStmt(expr)
+}
+
+func (p *Parser) assignment() ast.Expr {
+	expr := p.equality()
+
+	if p.match(token.EQUAL) {
+		equals := p.previous()
+		value := p.assignment()
+
+		if variable, ok := expr.(*ast.Variable); ok {
+			name := variable.Name
+			return &ast.Assign{
+				Name:  name,
+				Value: value,
+			}
+		}
+
+		errors.Error(equals, "Invalid assignment target.")
+	}
+
+	return expr
 }
 
 func (p *Parser) equality() ast.Expr {

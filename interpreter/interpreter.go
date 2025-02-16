@@ -4,17 +4,21 @@ import (
 	"fmt"
 
 	"github.com/drewslam/goloxTreeInterpreter/ast"
+	"github.com/drewslam/goloxTreeInterpreter/environment"
 	"github.com/drewslam/goloxTreeInterpreter/errors"
 	"github.com/drewslam/goloxTreeInterpreter/token"
 )
 
 type Interpreter struct {
-	object ast.ExprVisitor
-	void   ast.StmtVisitor
+	object      ast.ExprVisitor
+	void        ast.StmtVisitor
+	environment *environment.Environment
 }
 
 func NewInterpreter() *Interpreter {
-	return &Interpreter{}
+	return &Interpreter{
+		environment: environment.NewEnvrionment(),
+	}
 }
 
 func (i *Interpreter) Interpret(statements []ast.Stmt) {
@@ -55,6 +59,22 @@ func (i *Interpreter) VisitPrintStmt(stmt *ast.Print) interface{} {
 	value := i.evaluate(stmt.Expr)
 	fmt.Println(i.stringify(value))
 	return nil
+}
+
+func (i *Interpreter) VisitVarStmt(stmt *ast.Var) interface{} {
+	var value interface{}
+	if stmt.Initializer == nil {
+		value = i.evaluate(stmt.Initializer)
+	}
+
+	i.environment.Define(stmt.Name.Lexeme, value)
+	return nil
+}
+
+func (i *Interpreter) VisitAssignExpr(expr ast.Assign) interface{} {
+	value := i.evaluate(expr.Value)
+	i.environment.Assign(expr.Name, value)
+	return value
 }
 
 func (i *Interpreter) VisitBinaryExpr(expr *ast.Binary) interface{} {
@@ -129,6 +149,10 @@ func (i *Interpreter) VisitUnaryExpr(expr *ast.Unary) interface{} {
 
 	// Unreachable
 	return nil
+}
+
+func (i *Interpreter) VisitVariableExpr(expr ast.Variable) interface{} {
+	return i.environment.Get(expr.Name)
 }
 
 func (i *Interpreter) checkNumberOperand(operator token.Token, operand interface{}) {
