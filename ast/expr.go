@@ -15,7 +15,7 @@ type ExprVisitor interface {
 	//	VisitGetExpr(expr *Get) interface{}
 	VisitGroupingExpr(expr *Grouping) interface{}
 	VisitLiteralExpr(expr *Literal) interface{}
-	//	VisitLogicalExpr(expr *Logical) interface{}
+	VisitLogicalExpr(expr *Logical) interface{}
 	//	VisitSetExpr(expr *Set) interface{}
 	VisitUnaryExpr(expr *Unary) interface{}
 	VisitVariableExpr(expr *Variable) interface{}
@@ -70,6 +70,20 @@ func (l *Literal) Accept(visitor ExprVisitor) interface{} {
 		panic("Visitor is nil in Literal.Accept")
 	}
 	return visitor.VisitLiteralExpr(l)
+}
+
+// Logical expressions:
+type Logical struct {
+	Left     Expr
+	Operator token.Token
+	Right    Expr
+}
+
+func (l *Logical) Accept(visitor ExprVisitor) interface{} {
+	if visitor == nil {
+		panic("Visitor is nil in Logical.Accept")
+	}
+	return visitor.VisitLogicalExpr(l)
 }
 
 // Unary: Unary expression: "operator expression"

@@ -154,8 +154,25 @@ func (i *Interpreter) VisitGroupingExpr(expr *ast.Grouping) interface{} {
 }
 
 func (i *Interpreter) VisitLiteralExpr(expr *ast.Literal) interface{} {
-	// Handle literal values
+	// Handle literal expressions
 	return expr.Value
+}
+
+func (i *Interpreter) VisitLogicalExpr(expr *ast.Logical) interface{} {
+	// Handle logical expressions
+	left := i.evaluate(expr.Left)
+
+	if expr.Operator.Type == token.OR {
+		if i.isTruthy(left) {
+			return left
+		}
+	} else {
+		if !i.isTruthy(left) {
+			return left
+		}
+	}
+
+	return i.evaluate(expr.Right)
 }
 
 func (i *Interpreter) VisitUnaryExpr(expr *ast.Unary) interface{} {

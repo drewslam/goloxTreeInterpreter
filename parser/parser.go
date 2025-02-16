@@ -104,7 +104,7 @@ func (p *Parser) block() []ast.Stmt {
 }
 
 func (p *Parser) assignment() ast.Expr {
-	expr := p.equality()
+	expr := p.or()
 
 	if p.match(token.EQUAL) {
 		equals := p.previous()
@@ -119,6 +119,38 @@ func (p *Parser) assignment() ast.Expr {
 		}
 
 		errors.ReportParseError(equals, "Invalid assignment target.")
+	}
+
+	return expr
+}
+
+func (p *Parser) or() ast.Expr {
+	expr := p.and()
+
+	for p.match(token.OR) {
+		operator := p.previous()
+		right := p.and()
+		expr = &ast.Logical{
+			Left:     expr,
+			Operator: operator,
+			Right:    right,
+		}
+	}
+
+	return expr
+}
+
+func (p *Parser) and() ast.Expr {
+	expr := p.equality()
+
+	for p.match(token.AND) {
+		operator := p.previous()
+		right := p.equality()
+		expr = &ast.Logical{
+			Left:     expr,
+			Operator: operator,
+			Right:    right,
+		}
 	}
 
 	return expr
