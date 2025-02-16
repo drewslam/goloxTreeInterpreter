@@ -21,7 +21,7 @@ type RuntimeError struct {
 	Message string
 }
 
-// Error implements the error interface for ParseErrorr.
+// Error implements the error interface for ParseError.
 func (e *ParseError) Error() string {
 	return e.Message
 }
@@ -47,7 +47,7 @@ func NewRuntimeError(token token.Token, message string) *RuntimeError {
 }
 
 // ParseError function to report an error for a specific token and panic with a ParseError
-func Error(token token.Token, message string) {
+func ReportParseError(token token.Token, message string) {
 	if token.Type.String() == "EOF" {
 		report(token.Line, " at end", message)
 	} else {

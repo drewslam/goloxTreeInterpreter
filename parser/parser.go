@@ -101,7 +101,7 @@ func (p *Parser) assignment() ast.Expr {
 			}
 		}
 
-		errors.Error(equals, "Invalid assignment target.")
+		errors.ReportParseError(equals, "Invalid assignment target.")
 	}
 
 	return expr
@@ -220,7 +220,7 @@ func (p *Parser) primary() ast.Expr {
 	}
 
 	// Error handling if no valid expression is found
-	errors.Error(p.peek(), "Expect expression.")
+	errors.ReportParseError(p.peek(), "Expect expression.")
 	return nil
 }
 
