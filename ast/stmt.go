@@ -9,6 +9,7 @@ type Stmt interface {
 type StmtVisitor interface {
 	VisitBlockStmt(stmt *Block) interface{}
 	VisitExpressionStmt(stmt *Expression) interface{}
+	VisitIfStmt(stmt *If) interface{}
 	VisitPrintStmt(stmt *Print) interface{}
 	VisitVarStmt(stmt *Var) interface{}
 }
@@ -43,6 +44,28 @@ func (e *Expression) Accept(visitor StmtVisitor) interface{} {
 
 func NewExpressionStmt(expr Expr) *Expression {
 	return &Expression{Expr: expr}
+}
+
+// If type
+type If struct {
+	Condition  Expr
+	ThenBranch Stmt
+	ElseBranch Stmt
+}
+
+func (i *If) Accept(visitor StmtVisitor) interface{} {
+	if visitor == nil {
+		panic("Visitor is nil in If.Accept")
+	}
+	return visitor.VisitIfStmt(i)
+}
+
+func NewIfStmt(condition Expr, thenBranch Stmt, elseBranch Stmt) *If {
+	return &If{
+		Condition:  condition,
+		ThenBranch: thenBranch,
+		ElseBranch: elseBranch,
+	}
 }
 
 // Print type
