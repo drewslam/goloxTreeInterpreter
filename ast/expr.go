@@ -18,6 +18,7 @@ type ExprVisitor interface {
 	//	VisitLogicalExpr(expr *Logical) interface{}
 	//	VisitSetExpr(expr *Set) interface{}
 	VisitUnaryExpr(expr *Unary) interface{}
+	VisitVariableExpr(expr *Variable) interface{}
 }
 
 // Binary: Binary Expression: "left operator right"
@@ -69,4 +70,16 @@ func (u *Unary) Accept(visitor ExprVisitor) interface{} {
 		panic("Visitor is nil in Unary.Accept")
 	}
 	return visitor.VisitUnaryExpr(u)
+}
+
+// Variable expressions
+type Variable struct {
+	Name token.Token
+}
+
+func (v *Variable) Accept(visitor ExprVisitor) interface{} {
+	if visitor == nil {
+		panic("Visitor is nil in Variable.Accept")
+	}
+	return visitor.VisitVariableExpr(v)
 }

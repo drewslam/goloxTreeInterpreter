@@ -1,5 +1,7 @@
 package ast
 
+import "github.com/drewslam/goloxTreeInterpreter/token"
+
 type Stmt interface {
 	Accept(visitor StmtVisitor) interface{}
 }
@@ -7,6 +9,7 @@ type Stmt interface {
 type StmtVisitor interface {
 	VisitExpressionStmt(stmt *Expression) interface{}
 	VisitPrintStmt(stmt *Print) interface{}
+	VisitVarStmt(stmt *Var) interface{}
 }
 
 // Expression type
@@ -39,4 +42,24 @@ func (p *Print) Accept(visitor StmtVisitor) interface{} {
 
 func NewPrintStmt(expr Expr) *Print {
 	return &Print{Expr: expr}
+}
+
+// Variable type
+type Var struct {
+	Name        token.Token
+	Initializer Expr
+}
+
+func (v *Var) Accept(visitor StmtVisitor) interface{} {
+	if visitor == nil {
+		panic("Visitor is nil in Var.Accept")
+	}
+	return visitor.VisitVarStmt(v)
+}
+
+func NewVarStmt(name token.Token, initializer Expr) *Var {
+	return &Var{
+		Name:        name,
+		Initializer: initializer,
+	}
 }

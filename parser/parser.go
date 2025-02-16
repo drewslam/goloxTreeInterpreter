@@ -1,8 +1,6 @@
 package parser
 
 import (
-	"fmt"
-
 	"github.com/drewslam/goloxTreeInterpreter/ast"
 	"github.com/drewslam/goloxTreeInterpreter/errors"
 	"github.com/drewslam/goloxTreeInterpreter/token"
@@ -22,6 +20,26 @@ func (p *Parser) expression() ast.Expr {
 	return p.equality()
 }
 
+func (p *Parser) declaration() ast.Stmt {
+	defer func() {
+		if r := recover(); r != nil {
+			// Check if it's a parse error
+			if _, ok := r.(*errors.ParseError); ok {
+				// Return nil if a ParseError is caught
+				return
+			}
+			// Re-panic for unexpected errors
+			panic(r)
+		}
+	}()
+
+	if p.match(token.VAR) {
+		return p.varDeclaration()
+	}
+
+	return p.statement()
+}
+
 func (p *Parser) statement() ast.Stmt {
 	if p.match(token.PRINT) {
 		return p.printStatement()
@@ -34,6 +52,18 @@ func (p *Parser) printStatement() ast.Stmt {
 	expr := p.expression()
 	p.consume(token.SEMICOLON, "Expect ';' after value.")
 	return ast.NewPrintStmt(expr)
+}
+
+func (p *Parser) varDeclaration() ast.Stmt {
+	name := p.consume(token.IDENTIFIER, "Expect variable name.")
+
+	var initializer ast.Expr
+	if p.match(token.EQUAL) {
+		initializer = p.expression()
+	}
+
+	p.consume(token.SEMICOLON, "Expect ';' after variable declaration.")
+	return ast.NewVarStmt(name, initializer)
 }
 
 func (p *Parser) expressionStatement() ast.Stmt {
@@ -139,6 +169,12 @@ func (p *Parser) primary() ast.Expr {
 		}
 	}
 
+	if p.match(token.IDENTIFIER) {
+		return &ast.Variable{
+			Name: p.previous(),
+		}
+	}
+
 	if p.match(token.LEFT_PAREN) {
 		expr := p.expression()
 
@@ -169,13 +205,9 @@ func (p *Parser) Parse() []ast.Stmt {
 	}()
 
 	for !p.isAtEnd() {
-		stmt := p.statement()
-		if stmt != nil {
-			statements = append(statements, stmt)
-		}
+		statements = append(statements, p.declaration())
 	}
 
-	fmt.Println("Tokens:", p.tokens)
 	return statements
 }
 
