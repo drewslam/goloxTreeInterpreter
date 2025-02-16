@@ -94,9 +94,18 @@ func (i *Interpreter) VisitVarStmt(stmt *ast.Var) interface{} {
 	return nil
 }
 
+func (i *Interpreter) VisitWhileStmt(stmt *ast.While) interface{} {
+	for i.isTruthy(i.evaluate(stmt.Condition)) {
+		i.execute(stmt.Body)
+	}
+	return nil
+}
+
 func (i *Interpreter) VisitAssignExpr(expr *ast.Assign) interface{} {
 	value := i.evaluate(expr.Value)
-	i.environment.Assign(expr.Name, value)
+	if err := i.environment.Assign(expr.Name, value); err != nil {
+		panic(errors.NewRuntimeError(expr.Name, "Undefined variable '"+expr.Name.Lexeme+"'"))
+	}
 	return value
 }
 

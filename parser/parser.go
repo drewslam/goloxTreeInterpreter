@@ -47,6 +47,9 @@ func (p *Parser) statement() ast.Stmt {
 	if p.match(token.PRINT) {
 		return p.printStatement()
 	}
+	if p.match(token.WHILE) {
+		return p.whileStatement()
+	}
 	if p.match(token.LEFT_BRACE) {
 		return &ast.Block{Statements: p.block()}
 	}
@@ -84,6 +87,17 @@ func (p *Parser) varDeclaration() ast.Stmt {
 
 	p.consume(token.SEMICOLON, "Expect ';' after variable declaration.")
 	return ast.NewVarStmt(name, initializer)
+}
+func (p *Parser) whileStatement() ast.Stmt {
+	p.consume(token.LEFT_PAREN, "Expect '(' after 'while'.")
+	condition := p.expression()
+	p.consume(token.RIGHT_PAREN, "Expect ')' after condition.")
+	body := p.statement()
+
+	return &ast.While{
+		Condition: condition,
+		Body:      body,
+	}
 }
 
 func (p *Parser) expressionStatement() ast.Stmt {

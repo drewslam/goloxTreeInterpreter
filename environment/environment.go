@@ -1,6 +1,8 @@
 package environment
 
 import (
+	"fmt"
+
 	"github.com/drewslam/goloxTreeInterpreter/errors"
 	"github.com/drewslam/goloxTreeInterpreter/token"
 )
@@ -41,17 +43,17 @@ func (e *Environment) Get(name token.Token) interface{} {
 	panic(errors.NewRuntimeError(name, "Undefined variable '"+name.Lexeme+"'"))
 }
 
-func (e *Environment) Assign(name token.Token, value interface{}) {
-	if value, exists := e.Values[name.Lexeme]; exists {
+func (e *Environment) Assign(name token.Token, value interface{}) error {
+	if _, ok := e.Values[name.Lexeme]; ok {
 		e.Values[name.Lexeme] = value
-		return
+		return nil
 	}
 
 	if e.Enclosing != nil {
-		e.Assign(name, value)
+		e.Enclosing.Assign(name, value)
 	}
 
-	panic(errors.NewRuntimeError(name, "Undefined variable '"+name.Lexeme+"'"))
+	return fmt.Errorf("Undefined variable '%s'", name.Lexeme)
 }
 
 func (e *Environment) Define(name string, value interface{}) {

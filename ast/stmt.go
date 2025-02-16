@@ -12,6 +12,7 @@ type StmtVisitor interface {
 	VisitIfStmt(stmt *If) interface{}
 	VisitPrintStmt(stmt *Print) interface{}
 	VisitVarStmt(stmt *Var) interface{}
+	VisitWhileStmt(stmt *While) interface{}
 }
 
 // Block type
@@ -19,11 +20,11 @@ type Block struct {
 	Statements []Stmt
 }
 
-func (b *Block) Accept(visitor StmtVisitor) interface{} {
+func (stmt *Block) Accept(visitor StmtVisitor) interface{} {
 	if visitor == nil {
 		return nil
 	}
-	return visitor.VisitBlockStmt(b)
+	return visitor.VisitBlockStmt(stmt)
 }
 
 func NewBlockStmt(statements []Stmt) *Block {
@@ -35,11 +36,11 @@ type Expression struct {
 	Expr Expr
 }
 
-func (e *Expression) Accept(visitor StmtVisitor) interface{} {
+func (stmt *Expression) Accept(visitor StmtVisitor) interface{} {
 	if visitor == nil {
 		return nil
 	}
-	return visitor.VisitExpressionStmt(e)
+	return visitor.VisitExpressionStmt(stmt)
 }
 
 func NewExpressionStmt(expr Expr) *Expression {
@@ -53,11 +54,11 @@ type If struct {
 	ElseBranch Stmt
 }
 
-func (i *If) Accept(visitor StmtVisitor) interface{} {
+func (stmt *If) Accept(visitor StmtVisitor) interface{} {
 	if visitor == nil {
 		return nil
 	}
-	return visitor.VisitIfStmt(i)
+	return visitor.VisitIfStmt(stmt)
 }
 
 func NewIfStmt(condition Expr, thenBranch Stmt, elseBranch Stmt) *If {
@@ -73,11 +74,11 @@ type Print struct {
 	Expr Expr
 }
 
-func (p *Print) Accept(visitor StmtVisitor) interface{} {
+func (stmt *Print) Accept(visitor StmtVisitor) interface{} {
 	if visitor == nil {
 		return nil
 	}
-	return visitor.VisitPrintStmt(p)
+	return visitor.VisitPrintStmt(stmt)
 }
 
 func NewPrintStmt(expr Expr) *Print {
@@ -90,11 +91,11 @@ type Var struct {
 	Initializer Expr
 }
 
-func (v *Var) Accept(visitor StmtVisitor) interface{} {
+func (stmt *Var) Accept(visitor StmtVisitor) interface{} {
 	if visitor == nil {
 		return nil
 	}
-	return visitor.VisitVarStmt(v)
+	return visitor.VisitVarStmt(stmt)
 }
 
 func NewVarStmt(name token.Token, initializer Expr) *Var {
@@ -102,4 +103,17 @@ func NewVarStmt(name token.Token, initializer Expr) *Var {
 		Name:        name,
 		Initializer: initializer,
 	}
+}
+
+// While type
+type While struct {
+	Condition Expr
+	Body      Stmt
+}
+
+func (stmt *While) Accept(visitor StmtVisitor) interface{} {
+	if visitor == nil {
+		return nil
+	}
+	return visitor.VisitWhileStmt(stmt)
 }
