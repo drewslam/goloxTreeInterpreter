@@ -29,7 +29,7 @@ type Assign struct {
 
 func (a *Assign) Accept(visitor ExprVisitor) interface{} {
 	if visitor == nil {
-		panic("Visitor is nil in Assign.Accept")
+		return nil
 	}
 	return visitor.VisitAssignExpr(a)
 }
@@ -43,7 +43,7 @@ type Binary struct {
 
 func (b *Binary) Accept(visitor ExprVisitor) interface{} {
 	if visitor == nil {
-		panic("Visitor is nil in Binary.Accept")
+		return nil
 	}
 	return visitor.VisitBinaryExpr(b)
 }
@@ -55,7 +55,7 @@ type Grouping struct {
 
 func (g *Grouping) Accept(visitor ExprVisitor) interface{} {
 	if visitor == nil {
-		panic("Visitor is nil in Grouping.Accept")
+		return nil
 	}
 	return visitor.VisitGroupingExpr(g)
 }
@@ -67,7 +67,7 @@ type Literal struct {
 
 func (l *Literal) Accept(visitor ExprVisitor) interface{} {
 	if visitor == nil {
-		panic("Visitor is nil in Literal.Accept")
+		return nil
 	}
 	return visitor.VisitLiteralExpr(l)
 }
@@ -81,7 +81,7 @@ type Logical struct {
 
 func (l *Logical) Accept(visitor ExprVisitor) interface{} {
 	if visitor == nil {
-		panic("Visitor is nil in Logical.Accept")
+		return nil
 	}
 	return visitor.VisitLogicalExpr(l)
 }
@@ -94,7 +94,7 @@ type Unary struct {
 
 func (u *Unary) Accept(visitor ExprVisitor) interface{} {
 	if visitor == nil {
-		panic("Visitor is nil in Unary.Accept")
+		return nil
 	}
 	return visitor.VisitUnaryExpr(u)
 }
@@ -106,7 +106,7 @@ type Variable struct {
 
 func (v *Variable) Accept(visitor ExprVisitor) interface{} {
 	if visitor == nil {
-		panic("Visitor is nil in Variable.Accept")
+		return nil
 	}
 	return visitor.VisitVariableExpr(v)
 }

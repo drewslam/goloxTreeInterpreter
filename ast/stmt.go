@@ -21,7 +21,7 @@ type Block struct {
 
 func (b *Block) Accept(visitor StmtVisitor) interface{} {
 	if visitor == nil {
-		panic("Visitor is nil in Block.Accept")
+		return nil
 	}
 	return visitor.VisitBlockStmt(b)
 }
@@ -37,7 +37,7 @@ type Expression struct {
 
 func (e *Expression) Accept(visitor StmtVisitor) interface{} {
 	if visitor == nil {
-		panic("Visitor is nil in Expression.Accept")
+		return nil
 	}
 	return visitor.VisitExpressionStmt(e)
 }
@@ -55,7 +55,7 @@ type If struct {
 
 func (i *If) Accept(visitor StmtVisitor) interface{} {
 	if visitor == nil {
-		panic("Visitor is nil in If.Accept")
+		return nil
 	}
 	return visitor.VisitIfStmt(i)
 }
@@ -75,7 +75,7 @@ type Print struct {
 
 func (p *Print) Accept(visitor StmtVisitor) interface{} {
 	if visitor == nil {
-		panic("Visitor is nil in Print.Accept")
+		return nil
 	}
 	return visitor.VisitPrintStmt(p)
 }
@@ -92,7 +92,7 @@ type Var struct {
 
 func (v *Var) Accept(visitor StmtVisitor) interface{} {
 	if visitor == nil {
-		panic("Visitor is nil in Var.Accept")
+		return nil
 	}
 	return visitor.VisitVarStmt(v)
 }
