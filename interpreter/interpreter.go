@@ -45,7 +45,9 @@ func (i *Interpreter) execute(stmt ast.Stmt) {
 
 func (i *Interpreter) executeBlock(statements []ast.Stmt, environment *environment.Environment) {
 	previous := i.environment
-	i.environment = environment
+	if environment != nil {
+		i.environment = environment
+	}
 	for _, statement := range statements {
 		i.execute(statement)
 	}
@@ -95,9 +97,13 @@ func (i *Interpreter) VisitVarStmt(stmt *ast.Var) interface{} {
 }
 
 func (i *Interpreter) VisitWhileStmt(stmt *ast.While) interface{} {
+	previous := i.environment
+
 	for i.isTruthy(i.evaluate(stmt.Condition)) {
 		i.execute(stmt.Body)
 	}
+
+	i.environment = previous
 	return nil
 }
 

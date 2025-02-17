@@ -50,7 +50,7 @@ func (e *Environment) Assign(name token.Token, value interface{}) error {
 	}
 
 	if e.Enclosing != nil {
-		e.Enclosing.Assign(name, value)
+		return e.Enclosing.Assign(name, value)
 	}
 
 	return fmt.Errorf("Undefined variable '%s'", name.Lexeme)
