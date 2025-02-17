@@ -6,6 +6,7 @@ import (
 	"github.com/drewslam/goloxTreeInterpreter/ast"
 	"github.com/drewslam/goloxTreeInterpreter/environment"
 	"github.com/drewslam/goloxTreeInterpreter/loxCallable"
+	"github.com/drewslam/goloxTreeInterpreter/returnValue"
 )
 
 /*type Interpreter interface {
@@ -38,12 +39,23 @@ func (l *loxFunction) Arity() int {
 }
 
 func (l *loxFunction) Call(interpreter loxCallable.Interpreter, arguments []interface{}) interface{} {
+	var value interface{}
+	defer func() {
+		if r := recover(); r != nil {
+			if returnValue, ok := r.(*returnValue.ReturnValue); ok {
+				value = returnValue.Value
+			} else {
+				panic(r)
+			}
+		}
+	}()
+
 	environment := environment.NewEnvironment(interpreter.GetGlobals())
 	for i, param := range l.declaration.Params {
 		environment.Define(param.Lexeme, arguments[i])
 	}
 	interpreter.ExecuteBlock(l.declaration.Body, environment)
-	return nil
+	return value
 }
 
 var _ loxCallable.LoxCallable = (*loxFunction)(nil)

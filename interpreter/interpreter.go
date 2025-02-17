@@ -8,6 +8,7 @@ import (
 	"github.com/drewslam/goloxTreeInterpreter/errors"
 	"github.com/drewslam/goloxTreeInterpreter/loxCallable"
 	"github.com/drewslam/goloxTreeInterpreter/loxFunction"
+	"github.com/drewslam/goloxTreeInterpreter/returnValue"
 	"github.com/drewslam/goloxTreeInterpreter/token"
 )
 
@@ -110,7 +111,7 @@ func (i *Interpreter) VisitReturnStmt(stmt *ast.Return) interface{} {
 		value = i.evaluate(stmt.Value)
 	}
 
-	panic(&return.ReturnValue{Value: value})
+	panic(&returnValue.ReturnValue{Value: value})
 }
 
 func (i *Interpreter) VisitVarStmt(stmt *ast.Var) interface{} {
