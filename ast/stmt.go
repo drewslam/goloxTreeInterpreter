@@ -9,6 +9,7 @@ type Stmt interface {
 type StmtVisitor interface {
 	VisitBlockStmt(stmt *Block) interface{}
 	VisitExpressionStmt(stmt *Expression) interface{}
+	VisitFunctionStmt(stmt *Function) interface{}
 	VisitIfStmt(stmt *If) interface{}
 	VisitPrintStmt(stmt *Print) interface{}
 	VisitVarStmt(stmt *Var) interface{}
@@ -45,6 +46,20 @@ func (stmt *Expression) Accept(visitor StmtVisitor) interface{} {
 
 func NewExpressionStmt(expr Expr) *Expression {
 	return &Expression{Expr: expr}
+}
+
+// Function type
+type Function struct {
+	Name   token.Token
+	Params []token.Token
+	Body   []Stmt
+}
+
+func (stmt *Function) Accept(visitor StmtVisitor) interface{} {
+	if visitor == nil {
+		return nil
+	}
+	return visitor.VisitFunctionStmt(stmt)
 }
 
 // If type

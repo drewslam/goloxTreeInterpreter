@@ -6,18 +6,24 @@ import (
 	"github.com/drewslam/goloxTreeInterpreter/ast"
 	"github.com/drewslam/goloxTreeInterpreter/environment"
 	"github.com/drewslam/goloxTreeInterpreter/errors"
+	"github.com/drewslam/goloxTreeInterpreter/loxCallable"
+	"github.com/drewslam/goloxTreeInterpreter/loxFunction"
 	"github.com/drewslam/goloxTreeInterpreter/token"
 )
 
 type Interpreter struct {
-	object      ast.ExprVisitor
-	void        ast.StmtVisitor
+	exprVisitor ast.ExprVisitor
+	stmtVisitor ast.StmtVisitor
+	Globals     *environment.Environment
 	environment *environment.Environment
 }
 
 func NewInterpreter() *Interpreter {
+	globalEnv := environment.NewEnvironment()
+
 	return &Interpreter{
-		environment: environment.NewEnvironment(),
+		Globals:     globalEnv,
+		environment: globalEnv,
 	}
 }
 
@@ -43,7 +49,11 @@ func (i *Interpreter) execute(stmt ast.Stmt) {
 	stmt.Accept(i)
 }
 
-func (i *Interpreter) executeBlock(statements []ast.Stmt, environment *environment.Environment) {
+func (i *Interpreter) GetGlobals() *environment.Environment {
+	return i.Globals
+}
+
+func (i *Interpreter) ExecuteBlock(statements []ast.Stmt, environment *environment.Environment) {
 	previous := i.environment
 	if environment != nil {
 		i.environment = environment
@@ -54,8 +64,10 @@ func (i *Interpreter) executeBlock(statements []ast.Stmt, environment *environme
 	i.environment = previous
 }
 
+var _ loxCallable.Interpreter = &Interpreter{}
+
 func (i *Interpreter) VisitBlockStmt(stmt *ast.Block) interface{} {
-	i.executeBlock(stmt.Statements, environment.NewEnvironment(i.environment))
+	i.ExecuteBlock(stmt.Statements, environment.NewEnvironment(i.environment))
 	return nil
 }
 
@@ -68,6 +80,12 @@ func (i *Interpreter) evaluate(expr ast.Expr) interface{} {
 
 func (i *Interpreter) VisitExpressionStmt(stmt *ast.Expression) interface{} {
 	i.evaluate(stmt.Expr)
+	return nil
+}
+
+func (i *Interpreter) VisitFunctionStmt(stmt *ast.Function) interface{} {
+	function := loxFunction.NewLoxFunction(stmt)
+	i.environment.Define(stmt.Name.Lexeme, function)
 	return nil
 }
 
@@ -161,6 +179,27 @@ func (i *Interpreter) VisitBinaryExpr(expr *ast.Binary) interface{} {
 
 	// Unreachable
 	return nil
+}
+
+func (i *Interpreter) VisitCallExpr(expr *ast.Call) interface{} {
+	callee := i.evaluate(expr.Callee)
+
+	var arguments []interface{}
+	for _, argument := range expr.Arguments {
+		arguments = append(arguments, i.evaluate(argument))
+	}
+
+	if _, ok := callee.(loxCallable.LoxCallable); !ok {
+		errors.NewRuntimeError(expr.Paren, "Can only call functions and classes.")
+	}
+
+	function := callee.(loxCallable.LoxCallable)
+	if len(arguments) != function.Arity() {
+		message := fmt.Sprintf("Expected %d arguments but got %d.", function.Arity(), len(arguments))
+		errors.NewRuntimeError(expr.Paren, message)
+	}
+
+	return function.Call(i, arguments)
 }
 
 func (i *Interpreter) VisitGroupingExpr(expr *ast.Grouping) interface{} {

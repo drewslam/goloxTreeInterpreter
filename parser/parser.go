@@ -1,6 +1,8 @@
 package parser
 
 import (
+	"fmt"
+
 	"github.com/drewslam/goloxTreeInterpreter/ast"
 	"github.com/drewslam/goloxTreeInterpreter/errors"
 	"github.com/drewslam/goloxTreeInterpreter/token"
@@ -33,6 +35,9 @@ func (p *Parser) declaration() ast.Stmt {
 		}
 	}()
 
+	if p.match(token.FUN) {
+		return p.function("function")
+	}
 	if p.match(token.VAR) {
 		return p.varDeclaration()
 	}
@@ -176,14 +181,49 @@ func (p *Parser) expressionStatement() ast.Stmt {
 	return ast.NewExpressionStmt(expr)
 }
 
+func (p *Parser) function(kind string) *ast.Function {
+	message := fmt.Sprintf("Expect %v name.", kind)
+	name := p.consume(token.IDENTIFIER, message)
+
+	p.consume(token.LEFT_PAREN, "Expect '(' after function name.")
+
+	var parameters []token.Token
+	if !p.check(token.RIGHT_PAREN) {
+		for {
+			if len(parameters) >= 255 {
+				errors.ReportParseError(p.peek(), "Can't have more than 255 parameters.")
+			}
+			parameters = append(parameters, p.consume(token.IDENTIFIER, "Expect parameter name."))
+			if !p.match(token.COMMA) {
+				break
+			}
+		}
+	}
+
+	p.consume(token.RIGHT_PAREN, "Expect ')' after parameters.")
+
+	message = fmt.Sprintf("Expect '{' before %v body.", kind)
+	p.consume(token.LEFT_BRACE, message)
+
+	body := p.block()
+	return &ast.Function{
+		Name:   name,
+		Params: parameters,
+		Body:   body,
+	}
+}
+
 func (p *Parser) block() []ast.Stmt {
 	var statements []ast.Stmt
+
+	// p.consume(token.LEFT_BRACE, "Expect '{' before block.")
 
 	for !p.check(token.RIGHT_BRACE) && !p.isAtEnd() {
 		statements = append(statements, p.declaration())
 	}
 
 	p.consume(token.RIGHT_BRACE, "Expect '}' after block.")
+
 	return statements
 }
 
@@ -311,7 +351,43 @@ func (p *Parser) unary() ast.Expr {
 		}
 	}
 
-	return p.primary()
+	return p.call()
+}
+
+func (p *Parser) finishCall(callee ast.Expr) ast.Expr {
+	var arguments []ast.Expr
+
+	if !p.check(token.RIGHT_PAREN) {
+		for {
+			if len(arguments) >= 255 {
+				errors.ReportParseError(p.peek(), "Can't have more than 255 arguments.")
+			}
+
+			arguments = append(arguments, p.expression())
+
+			if !p.match(token.COMMA) {
+				break
+			}
+		}
+	}
+
+	paren := p.consume(token.RIGHT_PAREN, "Expect ')' after arguments.")
+
+	return &ast.Call{
+		Callee:    callee,
+		Paren:     paren,
+		Arguments: arguments,
+	}
+}
+
+func (p *Parser) call() ast.Expr {
+	expr := p.primary()
+
+	for p.match(token.LEFT_PAREN) {
+		expr = p.finishCall(expr)
+	}
+
+	return expr
 }
 
 func (p *Parser) primary() ast.Expr {

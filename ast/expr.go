@@ -11,7 +11,7 @@ type Expr interface {
 type ExprVisitor interface {
 	VisitAssignExpr(expr *Assign) interface{}
 	VisitBinaryExpr(expr *Binary) interface{}
-	//	VisitCallExpr(expr *Call) interface{}
+	VisitCallExpr(expr *Call) interface{}
 	//	VisitGetExpr(expr *Get) interface{}
 	VisitGroupingExpr(expr *Grouping) interface{}
 	VisitLiteralExpr(expr *Literal) interface{}
@@ -27,11 +27,11 @@ type Assign struct {
 	Value Expr
 }
 
-func (a *Assign) Accept(visitor ExprVisitor) interface{} {
+func (expr *Assign) Accept(visitor ExprVisitor) interface{} {
 	if visitor == nil {
 		return nil
 	}
-	return visitor.VisitAssignExpr(a)
+	return visitor.VisitAssignExpr(expr)
 }
 
 // Binary: Binary Expression: "left operator right"
@@ -41,11 +41,25 @@ type Binary struct {
 	Right    Expr
 }
 
-func (b *Binary) Accept(visitor ExprVisitor) interface{} {
+func (expr *Binary) Accept(visitor ExprVisitor) interface{} {
 	if visitor == nil {
 		return nil
 	}
-	return visitor.VisitBinaryExpr(b)
+	return visitor.VisitBinaryExpr(expr)
+}
+
+// Call
+type Call struct {
+	Callee    Expr
+	Paren     token.Token
+	Arguments []Expr
+}
+
+func (expr *Call) Accept(visitor ExprVisitor) interface{} {
+	if visitor == nil {
+		return nil
+	}
+	return visitor.VisitCallExpr(expr)
 }
 
 // Grouping: Grouping Expression: "(expression)"
@@ -53,11 +67,11 @@ type Grouping struct {
 	Expression Expr
 }
 
-func (g *Grouping) Accept(visitor ExprVisitor) interface{} {
+func (expr *Grouping) Accept(visitor ExprVisitor) interface{} {
 	if visitor == nil {
 		return nil
 	}
-	return visitor.VisitGroupingExpr(g)
+	return visitor.VisitGroupingExpr(expr)
 }
 
 // Literal: Literal value: Number, String, true, false, nil
@@ -65,11 +79,11 @@ type Literal struct {
 	Value interface{}
 }
 
-func (l *Literal) Accept(visitor ExprVisitor) interface{} {
+func (expr *Literal) Accept(visitor ExprVisitor) interface{} {
 	if visitor == nil {
 		return nil
 	}
-	return visitor.VisitLiteralExpr(l)
+	return visitor.VisitLiteralExpr(expr)
 }
 
 // Logical expressions:
@@ -79,11 +93,11 @@ type Logical struct {
 	Right    Expr
 }
 
-func (l *Logical) Accept(visitor ExprVisitor) interface{} {
+func (expr *Logical) Accept(visitor ExprVisitor) interface{} {
 	if visitor == nil {
 		return nil
 	}
-	return visitor.VisitLogicalExpr(l)
+	return visitor.VisitLogicalExpr(expr)
 }
 
 // Unary: Unary expression: "operator expression"
@@ -92,11 +106,11 @@ type Unary struct {
 	Right    Expr
 }
 
-func (u *Unary) Accept(visitor ExprVisitor) interface{} {
+func (expr *Unary) Accept(visitor ExprVisitor) interface{} {
 	if visitor == nil {
 		return nil
 	}
-	return visitor.VisitUnaryExpr(u)
+	return visitor.VisitUnaryExpr(expr)
 }
 
 // Variable expressions
@@ -104,9 +118,9 @@ type Variable struct {
 	Name token.Token
 }
 
-func (v *Variable) Accept(visitor ExprVisitor) interface{} {
+func (expr *Variable) Accept(visitor ExprVisitor) interface{} {
 	if visitor == nil {
 		return nil
 	}
-	return visitor.VisitVariableExpr(v)
+	return visitor.VisitVariableExpr(expr)
 }
