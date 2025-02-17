@@ -104,6 +104,15 @@ func (i *Interpreter) VisitPrintStmt(stmt *ast.Print) interface{} {
 	return nil
 }
 
+func (i *Interpreter) VisitReturnStmt(stmt *ast.Return) interface{} {
+	var value interface{} = nil
+	if stmt.Value != nil {
+		value = i.evaluate(stmt.Value)
+	}
+
+	panic(&return.ReturnValue{Value: value})
+}
+
 func (i *Interpreter) VisitVarStmt(stmt *ast.Var) interface{} {
 	var value interface{} = nil
 	if stmt.Initializer != nil {
