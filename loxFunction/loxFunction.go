@@ -9,24 +9,15 @@ import (
 	"github.com/drewslam/goloxTreeInterpreter/returnValue"
 )
 
-/*type Interpreter interface {
-	ExecuteBlock(statements []ast.Stmt, environment *environment.Environment)
-	GetGlobals() *environment.Environment
-}*/
-
-/*type LoxFunction interface {
-	Arity() int
-	Call(interpreter Interpreter, arguments []interface{}) interface{}
-	String() string
-}*/
-
 type loxFunction struct {
 	declaration *ast.Function
+	closure     *environment.Environment
 }
 
-func NewLoxFunction(declaration *ast.Function) *loxFunction {
+func NewLoxFunction(declaration *ast.Function, closure *environment.Environment) *loxFunction {
 	return &loxFunction{
 		declaration: declaration,
+		closure:     closure,
 	}
 }
 
@@ -39,7 +30,7 @@ func (l *loxFunction) Arity() int {
 }
 
 func (l *loxFunction) Call(interpreter loxCallable.Interpreter, arguments []interface{}) (result interface{}) {
-	environment := environment.NewEnvironment(interpreter.GetGlobals())
+	environment := environment.NewEnvironment(l.closure)
 
 	for i, param := range l.declaration.Params {
 		environment.Define(param.Lexeme, arguments[i])

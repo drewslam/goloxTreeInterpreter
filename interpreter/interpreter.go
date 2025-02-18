@@ -96,7 +96,7 @@ func (i *Interpreter) VisitExpressionStmt(stmt *ast.Expression) interface{} {
 }
 
 func (i *Interpreter) VisitFunctionStmt(stmt *ast.Function) interface{} {
-	function := loxFunction.NewLoxFunction(stmt)
+	function := loxFunction.NewLoxFunction(stmt, i.environment)
 	i.environment.Define(stmt.Name.Lexeme, function)
 	return nil
 }
