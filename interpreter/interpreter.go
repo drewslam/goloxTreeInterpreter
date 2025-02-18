@@ -31,16 +31,17 @@ func NewInterpreter() *Interpreter {
 func (i *Interpreter) Interpret(statements []ast.Stmt) {
 	defer func() {
 		if r := recover(); r != nil {
-			if runtimeErr, ok := r.(*errors.RuntimeError); ok {
-				i.reportRuntimeError(runtimeErr)
-			} else {
+			switch v := r.(type) {
+			case *errors.RuntimeError:
+				i.reportRuntimeError(v)
+			case *returnValue.ReturnValue:
+				fmt.Println(v.Value)
+			default:
 				panic(r) // Re-panic if it's not a RuntimeError
 			}
 		}
 	}()
 
-	// value := i.evaluate(expr)
-	// fmt.Println(i.stringify(value))
 	for _, stmt := range statements {
 		i.execute(stmt)
 	}
@@ -56,13 +57,21 @@ func (i *Interpreter) GetGlobals() *environment.Environment {
 
 func (i *Interpreter) ExecuteBlock(statements []ast.Stmt, environment *environment.Environment) {
 	previous := i.environment
-	if environment != nil {
-		i.environment = environment
-	}
+	i.environment = environment
+	defer func() { i.environment = previous }()
+
+	defer func() {
+		if r := recover(); r != nil {
+			if returnValue, ok := r.(*returnValue.ReturnValue); ok {
+				panic(returnValue)
+			}
+			panic(r)
+		}
+	}()
+
 	for _, statement := range statements {
 		i.execute(statement)
 	}
-	i.environment = previous
 }
 
 var _ loxCallable.Interpreter = &Interpreter{}

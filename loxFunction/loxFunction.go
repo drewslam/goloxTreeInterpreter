@@ -38,24 +38,26 @@ func (l *loxFunction) Arity() int {
 	return len(l.declaration.Params)
 }
 
-func (l *loxFunction) Call(interpreter loxCallable.Interpreter, arguments []interface{}) interface{} {
-	var value interface{}
+func (l *loxFunction) Call(interpreter loxCallable.Interpreter, arguments []interface{}) (result interface{}) {
+	environment := environment.NewEnvironment(interpreter.GetGlobals())
+
+	for i, param := range l.declaration.Params {
+		environment.Define(param.Lexeme, arguments[i])
+	}
+
 	defer func() {
 		if r := recover(); r != nil {
 			if returnValue, ok := r.(*returnValue.ReturnValue); ok {
-				value = returnValue.Value
+				result = returnValue.Value
 			} else {
 				panic(r)
 			}
 		}
 	}()
 
-	environment := environment.NewEnvironment(interpreter.GetGlobals())
-	for i, param := range l.declaration.Params {
-		environment.Define(param.Lexeme, arguments[i])
-	}
 	interpreter.ExecuteBlock(l.declaration.Body, environment)
-	return value
+
+	return
 }
 
 var _ loxCallable.LoxCallable = (*loxFunction)(nil)
