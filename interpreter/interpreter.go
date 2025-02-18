@@ -22,6 +22,8 @@ type Interpreter struct {
 func NewInterpreter() *Interpreter {
 	globalEnv := environment.NewEnvironment()
 
+	loxCallable.RegisterNatives(globalEnv)
+
 	return &Interpreter{
 		Globals:     globalEnv,
 		environment: globalEnv,

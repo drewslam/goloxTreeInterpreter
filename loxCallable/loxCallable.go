@@ -22,6 +22,10 @@ func NewClockCallable() LoxCallable {
 	return &Clock{}
 }
 
+func RegisterNatives(env *environment.Environment) {
+	env.Define("clock", NewClockCallable())
+}
+
 type Clock struct{}
 
 func (c *Clock) Arity() int {
