@@ -8,6 +8,7 @@ import (
 	"github.com/drewslam/goloxTreeInterpreter/errors"
 	"github.com/drewslam/goloxTreeInterpreter/interpreter"
 	"github.com/drewslam/goloxTreeInterpreter/parser"
+	"github.com/drewslam/goloxTreeInterpreter/resolver"
 	"github.com/drewslam/goloxTreeInterpreter/scanner"
 )
 
@@ -72,6 +73,17 @@ func (l *Lox) run(source string) error {
 
 	if errors.HadRuntimeError {
 		os.Exit(70)
+	}
+
+	resolver := &resolver.Resolver{
+		Interpreter: l.interpreter,
+		Scopes:      make([]map[string]bool, 0),
+	}
+
+	resolver.Resolve(statements)
+
+	if errors.HadError {
+		return nil
 	}
 
 	l.interpreter.Interpret(statements)
