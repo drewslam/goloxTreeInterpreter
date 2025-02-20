@@ -7,7 +7,6 @@ import (
 	"github.com/drewslam/goloxTreeInterpreter/environment"
 	"github.com/drewslam/goloxTreeInterpreter/errors"
 	"github.com/drewslam/goloxTreeInterpreter/loxCallable"
-	"github.com/drewslam/goloxTreeInterpreter/loxFunction"
 	"github.com/drewslam/goloxTreeInterpreter/object"
 	"github.com/drewslam/goloxTreeInterpreter/returnValue"
 	"github.com/drewslam/goloxTreeInterpreter/token"
@@ -92,10 +91,27 @@ func (i *Interpreter) VisitBlockStmt(stmt *ast.Block) interface{} {
 
 func (i *Interpreter) VisitClassStmt(stmt *ast.Class) interface{} {
 	i.environment.Define(stmt.Name.Lexeme, nil)
-	klass := &object.LoxClass{
-		Name: stmt.Name.Lexeme,
+
+	methods := make(map[string]*object.LoxFunction)
+	for _, method := range stmt.Methods {
+		function := &object.LoxFunction{
+			Declaration: &method,
+			Closure:     i.environment,
+		}
+		methods[method.Name.Lexeme] = function
 	}
-	i.environment.Assign(stmt.Name, klass)
+
+	klass := &object.LoxClass{
+		Name:    stmt.Name.Lexeme,
+		Methods: methods,
+	}
+
+	instance := &object.LoxInstance{
+		Klass:  klass,
+		Fields: make(map[string]interface{}),
+	}
+
+	i.environment.Assign(stmt.Name, instance)
 	return nil
 }
 
@@ -112,7 +128,7 @@ func (i *Interpreter) VisitExpressionStmt(stmt *ast.Expression) interface{} {
 }
 
 func (i *Interpreter) VisitFunctionStmt(stmt *ast.Function) interface{} {
-	function := loxFunction.NewLoxFunction(stmt, i.environment)
+	function := object.NewLoxFunction(stmt, i.environment)
 	i.environment.Define(stmt.Name.Lexeme, function)
 	return nil
 }
@@ -224,6 +240,7 @@ func (i *Interpreter) VisitBinaryExpr(expr *ast.Binary) interface{} {
 
 func (i *Interpreter) VisitCallExpr(expr *ast.Call) interface{} {
 	callee := i.evaluate(expr.Callee)
+	fmt.Printf("Calling: %v\n", callee) // Debugging output
 
 	var arguments []interface{}
 	for _, argument := range expr.Arguments {
@@ -231,13 +248,13 @@ func (i *Interpreter) VisitCallExpr(expr *ast.Call) interface{} {
 	}
 
 	if _, ok := callee.(loxCallable.LoxCallable); !ok {
-		errors.NewRuntimeError(expr.Paren, "Can only call functions and classes.")
+		return errors.NewRuntimeError(expr.Paren, "Can only call functions and classes.")
 	}
 
 	function := callee.(loxCallable.LoxCallable)
 	if len(arguments) != function.Arity() {
 		message := fmt.Sprintf("Expected %d arguments but got %d.", function.Arity(), len(arguments))
-		errors.NewRuntimeError(expr.Paren, message)
+		return errors.NewRuntimeError(expr.Paren, message)
 	}
 
 	return function.Call(i, arguments)
@@ -289,6 +306,10 @@ func (i *Interpreter) VisitSetExpr(expr *ast.Set) interface{} {
 	value := i.evaluate(expr.Value)
 	objekt.(*object.LoxInstance).Set(expr.Name, value)
 	return value
+}
+
+func (i *Interpreter) VisitThisExpr(expr *ast.This) interface{} {
+	return i.lookUpVariable(expr.Keyword, expr)
 }
 
 func (i *Interpreter) VisitUnaryExpr(expr *ast.Unary) interface{} {

@@ -17,6 +17,7 @@ type ExprVisitor interface {
 	VisitLiteralExpr(expr *Literal) interface{}
 	VisitLogicalExpr(expr *Logical) interface{}
 	VisitSetExpr(expr *Set) interface{}
+	VisitThisExpr(expr *This) interface{}
 	VisitUnaryExpr(expr *Unary) interface{}
 	VisitVariableExpr(expr *Variable) interface{}
 }
@@ -125,6 +126,18 @@ func (expr *Set) Accept(visitor ExprVisitor) interface{} {
 		return nil
 	}
 	return visitor.VisitSetExpr(expr)
+}
+
+// This
+type This struct {
+	Keyword token.Token
+}
+
+func (expr *This) Accept(visitor ExprVisitor) interface{} {
+	if visitor == nil {
+		return nil
+	}
+	return visitor.VisitThisExpr(expr)
 }
 
 // Unary: Unary expression: "operator expression"

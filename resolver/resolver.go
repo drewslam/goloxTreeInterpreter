@@ -24,9 +24,19 @@ type Resolver struct {
 type FunctionType int
 
 const (
-	NONE FunctionType = iota
+	NOT_FUNCTION FunctionType = iota
 	FUNCTION
+	METHOD
 )
+
+type ClassType int
+
+const (
+	NOT_CLASS ClassType = iota
+	CLASS
+)
+
+var currentClass ClassType = NOT_CLASS
 
 var _ ast.StmtVisitor = (*Resolver)(nil)
 var _ ast.ExprVisitor = (*Resolver)(nil)
@@ -45,8 +55,24 @@ func (r *Resolver) VisitBlockStmt(stmt *ast.Block) interface{} {
 }
 
 func (r *Resolver) VisitClassStmt(stmt *ast.Class) interface{} {
+	enclosingClass := currentClass
+	currentClass = CLASS
+
 	r.declare(stmt.Name)
 	r.define(stmt.Name)
+
+	r.beginScope()
+	if len(r.Scopes) > 0 {
+		r.Scopes[len(r.Scopes)-1]["this"] = true
+	}
+
+	for _, method := range stmt.Methods {
+		declaration := METHOD
+		r.resolveFunction(&method, declaration)
+	}
+	r.endScope()
+
+	currentClass = enclosingClass
 	return nil
 }
 
@@ -218,6 +244,15 @@ func (r *Resolver) VisitLogicalExpr(expr *ast.Logical) interface{} {
 func (r *Resolver) VisitSetExpr(expr *ast.Set) interface{} {
 	r.resolve(expr.Value)
 	r.resolve(expr.Object)
+	return nil
+}
+
+func (r *Resolver) VisitThisExpr(expr *ast.This) interface{} {
+	if currentClass == NOT_CLASS {
+		return errors.NewRuntimeError(expr.Keyword, "Can't use 'this' outside of a class.")
+	}
+
+	r.resolveLocal(expr, expr.Keyword)
 	return nil
 }
 
