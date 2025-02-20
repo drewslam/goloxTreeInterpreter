@@ -215,7 +215,7 @@ func (r *Resolver) VisitLogicalExpr(expr *ast.Logical) interface{} {
 	return nil
 }
 
-func (r *Resolver) VisitSetExpr(expr *ast.Set) {
+func (r *Resolver) VisitSetExpr(expr *ast.Set) interface{} {
 	r.resolve(expr.Value)
 	r.resolve(expr.Object)
 	return nil
