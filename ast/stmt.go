@@ -8,6 +8,7 @@ type Stmt interface {
 
 type StmtVisitor interface {
 	VisitBlockStmt(stmt *Block) interface{}
+	VisitClassStmt(stmt *Class) interface{}
 	VisitExpressionStmt(stmt *Expression) interface{}
 	VisitFunctionStmt(stmt *Function) interface{}
 	VisitIfStmt(stmt *If) interface{}
@@ -31,6 +32,20 @@ func (stmt *Block) Accept(visitor StmtVisitor) interface{} {
 
 func NewBlockStmt(statements []Stmt) *Block {
 	return &Block{Statements: statements}
+}
+
+// Class type
+type Class struct {
+	Name    token.Token
+	Methods []Function
+}
+
+func (stmt *Class) Accept(visitor StmtVisitor) interface{} {
+	if visitor == nil {
+		return nil
+	}
+
+	return visitor.VisitClassStmt(stmt)
 }
 
 // Expression type

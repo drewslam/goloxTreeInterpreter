@@ -44,6 +44,12 @@ func (r *Resolver) VisitBlockStmt(stmt *ast.Block) interface{} {
 	return nil
 }
 
+func (r *Resolver) VisitClassStmt(stmt *ast.Class) interface{} {
+	r.declare(stmt.Name)
+	r.define(stmt.Name)
+	return nil
+}
+
 func (r *Resolver) VisitExpressionStmt(stmt *ast.Expression) interface{} {
 	r.resolve(stmt.Expr)
 	return nil
@@ -189,6 +195,11 @@ func (r *Resolver) VisitCallExpr(expr *ast.Call) interface{} {
 	return nil
 }
 
+func (r *Resolver) VisitGetExpr(expr *ast.Get) interface{} {
+	r.resolve(expr.Object)
+	return nil
+}
+
 func (r *Resolver) VisitGroupingExpr(expr *ast.Grouping) interface{} {
 	r.resolve(expr.Expression)
 	return nil
@@ -201,6 +212,12 @@ func (r *Resolver) VisitLiteralExpr(expr *ast.Literal) interface{} {
 func (r *Resolver) VisitLogicalExpr(expr *ast.Logical) interface{} {
 	r.resolve(expr.Left)
 	r.resolve(expr.Right)
+	return nil
+}
+
+func (r *Resolver) VisitSetExpr(expr *ast.Set) {
+	r.resolve(expr.Value)
+	r.resolve(expr.Object)
 	return nil
 }
 

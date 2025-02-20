@@ -12,11 +12,11 @@ type ExprVisitor interface {
 	VisitAssignExpr(expr *Assign) interface{}
 	VisitBinaryExpr(expr *Binary) interface{}
 	VisitCallExpr(expr *Call) interface{}
-	//	VisitGetExpr(expr *Get) interface{}
+	VisitGetExpr(expr *Get) interface{}
 	VisitGroupingExpr(expr *Grouping) interface{}
 	VisitLiteralExpr(expr *Literal) interface{}
 	VisitLogicalExpr(expr *Logical) interface{}
-	//	VisitSetExpr(expr *Set) interface{}
+	VisitSetExpr(expr *Set) interface{}
 	VisitUnaryExpr(expr *Unary) interface{}
 	VisitVariableExpr(expr *Variable) interface{}
 }
@@ -62,6 +62,19 @@ func (expr *Call) Accept(visitor ExprVisitor) interface{} {
 	return visitor.VisitCallExpr(expr)
 }
 
+// Get
+type Get struct {
+	Object Expr
+	Name   token.Token
+}
+
+func (expr *Get) Accept(visitor ExprVisitor) interface{} {
+	if visitor == nil {
+		return nil
+	}
+	return visitor.VisitGetExpr(expr)
+}
+
 // Grouping: Grouping Expression: "(expression)"
 type Grouping struct {
 	Expression Expr
@@ -98,6 +111,20 @@ func (expr *Logical) Accept(visitor ExprVisitor) interface{} {
 		return nil
 	}
 	return visitor.VisitLogicalExpr(expr)
+}
+
+// Set
+type Set struct {
+	Object Expr
+	Name   token.Token
+	Value  Expr
+}
+
+func (expr *Set) Accept(visitor ExprVisitor) interface{} {
+	if visitor == nil {
+		return nil
+	}
+	return visitor.VisitSetExpr(expr)
 }
 
 // Unary: Unary expression: "operator expression"

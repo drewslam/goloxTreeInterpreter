@@ -8,6 +8,7 @@ import (
 	"github.com/drewslam/goloxTreeInterpreter/errors"
 	"github.com/drewslam/goloxTreeInterpreter/loxCallable"
 	"github.com/drewslam/goloxTreeInterpreter/loxFunction"
+	"github.com/drewslam/goloxTreeInterpreter/object"
 	"github.com/drewslam/goloxTreeInterpreter/returnValue"
 	"github.com/drewslam/goloxTreeInterpreter/token"
 )
@@ -86,6 +87,15 @@ var _ loxCallable.Interpreter = &Interpreter{}
 
 func (i *Interpreter) VisitBlockStmt(stmt *ast.Block) interface{} {
 	i.ExecuteBlock(stmt.Statements, environment.NewEnvironment(i.environment))
+	return nil
+}
+
+func (i *Interpreter) VisitClassStmt(stmt *ast.Class) interface{} {
+	i.environment.Define(stmt.Name.Lexeme, nil)
+	klass := &object.LoxClass{
+		Name: stmt.Name.Lexeme,
+	}
+	i.environment.Assign(stmt.Name, klass)
 	return nil
 }
 
@@ -233,6 +243,15 @@ func (i *Interpreter) VisitCallExpr(expr *ast.Call) interface{} {
 	return function.Call(i, arguments)
 }
 
+func (i *Interpreter) VisitGetExpr(expr *ast.Get) interface{} {
+	objekt := i.evaluate(expr.Object)
+	if instance, ok := objekt.(*object.LoxInstance); ok {
+		return instance.Get(expr.Name)
+	}
+
+	return errors.NewRuntimeError(expr.Name, "Only instances have properties.")
+}
+
 func (i *Interpreter) VisitGroupingExpr(expr *ast.Grouping) interface{} {
 	// Handle grouping expressions
 	return i.evaluate(expr.Expression)
@@ -258,6 +277,18 @@ func (i *Interpreter) VisitLogicalExpr(expr *ast.Logical) interface{} {
 	}
 
 	return i.evaluate(expr.Right)
+}
+
+func (i *Interpreter) VisitSetExpr(expr *ast.Set) interface{} {
+	objekt := i.evaluate(expr.Object)
+
+	if _, ok := objekt.(*object.LoxInstance); !ok {
+		return errors.NewRuntimeError(expr.Name, "Only instances have fields.")
+	}
+
+	value := i.evaluate(expr.Value)
+	objekt.(*object.LoxInstance).Set(expr.Name, value)
+	return value
 }
 
 func (i *Interpreter) VisitUnaryExpr(expr *ast.Unary) interface{} {
