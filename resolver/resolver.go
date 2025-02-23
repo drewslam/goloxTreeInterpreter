@@ -15,10 +15,8 @@ func peek(stack []map[string]bool) (map[string]bool, bool) {
 }
 
 type Resolver struct {
-	Interpreter     *interpreter.Interpreter
-	Scopes          []map[string]bool
-	Locals          map[ast.Expr]int
-	CurrentFunction FunctionType
+	interpreter *interpreter.Interpreter
+	scopes      []map[string]bool
 }
 
 type FunctionType int
@@ -85,7 +83,7 @@ func (r *Resolver) VisitFunctionStmt(stmt *ast.Function) interface{} {
 	r.declare(stmt.Name)
 	r.define(stmt.Name)
 
-	r.resolveFunction(stmt, FUNCTION)
+	r.resolveFunction(stmt)
 	return nil
 }
 
@@ -120,67 +118,50 @@ func (r *Resolver) resolve(input interface{}) {
 	}
 }
 
-func (r *Resolver) resolveFunction(function *ast.Function, functiontype FunctionType) {
-	enclosingFunction := r.CurrentFunction
-	r.CurrentFunction = functiontype
-
+func (r *Resolver) resolveFunction(function *ast.Function) {
 	r.beginScope()
 	for _, param := range function.Params {
 		r.declare(param)
 		r.define(param)
 	}
-	r.Resolve(function.Body)
+	r.resolve(function.Body)
 	r.endScope()
-	r.CurrentFunction = enclosingFunction
 }
 
 func (r *Resolver) beginScope() {
-	r.Scopes = append(r.Scopes, make(map[string]bool))
+	r.scopes = append(r.scopes, make(map[string]bool))
 }
 
 func (r *Resolver) endScope() {
-	r.Scopes = r.Scopes[:len(r.Scopes)-1]
+	r.scopes = r.scopes[:len(r.scopes)-1]
 }
 
-func (r *Resolver) declare(name token.Token) error {
-	if len(r.Scopes) == 0 {
-		return nil
+func (r *Resolver) declare(name token.Token) {
+	if len(r.scopes) == 0 {
+		return
 	}
 
-	scope, ok := peek(r.Scopes)
-	if !ok || scope == nil {
-		return nil
+	scope, ok := peek(r.scopes)
+	if ok {
+		scope[name.Lexeme] = false
 	}
-
-	if _, exists := scope[name.Lexeme]; exists {
-		return errors.NewRuntimeError(name, "Already a variable with this name in this scope.")
-	}
-
-	scope[name.Lexeme] = false
-	return nil
 }
 
 func (r *Resolver) define(name token.Token) {
-	if len(r.Scopes) == 0 {
+	if len(r.scopes) == 0 {
 		return
 	}
-	/*
-		scope, ok := peek(r.Scopes)
-		if ok {
-			scope[name.Lexeme] = true
-		}
-	*/
-	r.Scopes[len(r.Scopes)-1][name.Lexeme] = true
+
+	scope, ok := peek(r.scopes)
+	if ok {
+		scope[name.Lexeme] = true
+	}
 }
 
 func (r *Resolver) resolveLocal(expr ast.Expr, name token.Token) {
-	for i := len(r.Scopes) - 1; i >= 0; i-- {
-		if r.Scopes[i] == nil {
-			continue
-		}
-
-		if _, ok := r.Scopes[i][name.Lexeme]; ok {
-			r.Interpreter.Resolve(expr, len(r.Scopes)-1-i)
+	for i := len(r.scopes) - 1; i >= 0; i-- {
+		if _, ok := r.scopes[i][name.Lexeme]; ok {
+			r.interpreter.Resolve(expr, len(r.scopes)-1-i)
 			return
 		}
 	}
@@ -262,8 +243,8 @@ func (r *Resolver) VisitUnaryExpr(expr *ast.Unary) interface{} {
 }
 
 func (r *Resolver) VisitVariableExpr(expr *ast.Variable) interface{} {
-	if len(r.Scopes) > 0 {
-		if scope, ok := peek(r.Scopes); ok {
+	if len(r.scopes) > 0 {
+		if scope, ok := peek(r.scopes); ok {
 			if defined, exists := scope[expr.Name.Lexeme]; exists && !defined {
 				errors.ReportParseError(expr.Name, "Can't read local variable in its own initializer.")
 			}

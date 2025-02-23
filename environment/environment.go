@@ -59,19 +59,3 @@ func (e *Environment) Assign(name token.Token, value interface{}) error {
 func (e *Environment) Define(name string, value interface{}) {
 	e.Values[name] = value
 }
-
-func (e *Environment) Ancestor(distance int) *Environment {
-	environment := e
-	for i := 0; i < distance; i++ {
-		environment = environment.Enclosing
-	}
-	return environment
-}
-
-func (e *Environment) GetAt(distance int, name string) interface{} {
-	return e.Ancestor(distance).Values[name]
-}
-
-func (e *Environment) AssignAt(distance int, name token.Token, value interface{}) {
-	e.Ancestor(distance).Values[name.Lexeme] = value
-}

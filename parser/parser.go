@@ -1,4 +1,4 @@
-package parser
+package reading
 
 import (
 	"fmt"
@@ -52,9 +52,13 @@ func (p *Parser) classDeclaration() ast.Stmt {
 	name := p.consume(token.IDENTIFIER, "Expect class name.")
 	p.consume(token.LEFT_BRACE, "Expect '{' before class body.")
 
-	var methods []ast.Function
+	var methods []*ast.Function
 	for !p.check(token.RIGHT_BRACE) && !p.isAtEnd() {
-		methods = append(methods, *p.function("method"))
+		method := p.function("method")
+		if method != nil {
+			methods = append(methods, p.function("method"))
+			fmt.Printf("Parsed method: %+v\n", method)
+		}
 	}
 
 	p.consume(token.RIGHT_BRACE, "Expect '}' after class body.")
@@ -219,7 +223,9 @@ func (p *Parser) expressionStatement() ast.Stmt {
 
 func (p *Parser) function(kind string) *ast.Function {
 	message := fmt.Sprintf("Expect %v name.", kind)
+	fmt.Println("Parsing method: ", p.peek()) // debug print
 	name := p.consume(token.IDENTIFIER, message)
+	fmt.Println("Parsed method: ", p.peek()) // debug print
 
 	p.consume(token.LEFT_PAREN, "Expect '(' after function name.")
 
@@ -254,11 +260,15 @@ func (p *Parser) block() []ast.Stmt {
 
 	// p.consume(token.LEFT_BRACE, "Expect '{' before block.")
 
+	fmt.Println("Parsing block, next token: ", p.peek()) // debug print
+
 	for !p.check(token.RIGHT_BRACE) && !p.isAtEnd() {
 		statements = append(statements, p.declaration())
 	}
 
 	p.consume(token.RIGHT_BRACE, "Expect '}' after block.")
+
+	fmt.Println("Finished parsing block, statements: ", statements) // debug print
 
 	return statements
 }

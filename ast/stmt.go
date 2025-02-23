@@ -37,7 +37,7 @@ func NewBlockStmt(statements []Stmt) *Block {
 // Class type
 type Class struct {
 	Name    token.Token
-	Methods []Function
+	Methods []*Function
 }
 
 func (stmt *Class) Accept(visitor StmtVisitor) interface{} {

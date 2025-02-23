@@ -16,7 +16,6 @@ type Interpreter struct {
 	exprVisitor ast.ExprVisitor
 	stmtVisitor ast.StmtVisitor
 	Globals     *environment.Environment
-	Locals      map[interface{}]int
 	environment *environment.Environment
 }
 
@@ -28,7 +27,6 @@ func NewInterpreter() *Interpreter {
 	return &Interpreter{
 		Globals:     globalEnv,
 		environment: globalEnv,
-		Locals:      make(map[interface{}]int),
 	}
 }
 
@@ -53,10 +51,6 @@ func (i *Interpreter) Interpret(statements []ast.Stmt) {
 
 func (i *Interpreter) execute(stmt ast.Stmt) {
 	stmt.Accept(i)
-}
-
-func (i *Interpreter) Resolve(expr ast.Expr, depth int) {
-	i.Locals[expr] = depth
 }
 
 func (i *Interpreter) GetGlobals() *environment.Environment {
@@ -180,13 +174,9 @@ func (i *Interpreter) VisitWhileStmt(stmt *ast.While) interface{} {
 
 func (i *Interpreter) VisitAssignExpr(expr *ast.Assign) interface{} {
 	value := i.evaluate(expr.Value)
-
-	if distance, ok := i.Locals[expr]; ok {
-		i.environment.AssignAt(distance, expr.Name, value)
-	} else {
-		i.Globals.Assign(expr.Name, value)
+	if err := i.environment.Assign(expr.Name, value); err != nil {
+		panic(errors.NewRuntimeError(expr.Name, "Undefined variable '"+expr.Name.Lexeme+"'"))
 	}
-
 	return value
 }
 
@@ -329,14 +319,7 @@ func (i *Interpreter) VisitUnaryExpr(expr *ast.Unary) interface{} {
 }
 
 func (i *Interpreter) VisitVariableExpr(expr *ast.Variable) interface{} {
-	return i.lookUpVariable(expr.Name, expr)
-}
-
-func (i *Interpreter) lookUpVariable(name token.Token, expr ast.Expr) interface{} {
-	if distance, ok := i.Locals[expr]; ok {
-		return i.environment.GetAt(distance, name.Lexeme)
-	}
-	return i.Globals.Get(name)
+	return i.environment.Get(expr.Name)
 }
 
 func (i *Interpreter) checkNumberOperand(operator token.Token, operand interface{}) {
