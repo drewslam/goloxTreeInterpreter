@@ -1,4 +1,4 @@
-package reading
+package parser
 
 import (
 	"fmt"
@@ -56,7 +56,7 @@ func (p *Parser) classDeclaration() ast.Stmt {
 	for !p.check(token.RIGHT_BRACE) && !p.isAtEnd() {
 		method := p.function("method")
 		if method != nil {
-			methods = append(methods, p.function("method"))
+			methods = append(methods, method)
 			fmt.Printf("Parsed method: %+v\n", method)
 		}
 	}

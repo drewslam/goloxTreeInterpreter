@@ -1,5 +1,7 @@
 package ast
 
+import "github.com/drewslam/goloxTreeInterpreter/token"
+
 type Expr interface {
 	Accept(visitor ExprVisitor) interface{}
 }
@@ -20,7 +22,7 @@ type ExprVisitor interface {
 
 // Assignment
 type Assign struct {
-	Name  reading.Token
+	Name  token.Token
 	Value Expr
 }
 
@@ -34,7 +36,7 @@ func (expr *Assign) Accept(visitor ExprVisitor) interface{} {
 // Binary: Binary Expression: "left operator right"
 type Binary struct {
 	Left     Expr
-	Operator reading.Token
+	Operator token.Token
 	Right    Expr
 }
 
@@ -48,7 +50,7 @@ func (expr *Binary) Accept(visitor ExprVisitor) interface{} {
 // Call
 type Call struct {
 	Callee    Expr
-	Paren     reading.Token
+	Paren     token.Token
 	Arguments []Expr
 }
 
@@ -62,7 +64,7 @@ func (expr *Call) Accept(visitor ExprVisitor) interface{} {
 // Get
 type Get struct {
 	Object Expr
-	Name   reading.Token
+	Name   token.Token
 }
 
 func (expr *Get) Accept(visitor ExprVisitor) interface{} {
@@ -99,7 +101,7 @@ func (expr *Literal) Accept(visitor ExprVisitor) interface{} {
 // Logical expressions:
 type Logical struct {
 	Left     Expr
-	Operator reading.Token
+	Operator token.Token
 	Right    Expr
 }
 
@@ -113,7 +115,7 @@ func (expr *Logical) Accept(visitor ExprVisitor) interface{} {
 // Set
 type Set struct {
 	Object Expr
-	Name   reading.Token
+	Name   token.Token
 	Value  Expr
 }
 
@@ -126,7 +128,7 @@ func (expr *Set) Accept(visitor ExprVisitor) interface{} {
 
 // This
 type This struct {
-	Keyword reading.Token
+	Keyword token.Token
 }
 
 func (expr *This) Accept(visitor ExprVisitor) interface{} {
@@ -138,7 +140,7 @@ func (expr *This) Accept(visitor ExprVisitor) interface{} {
 
 // Unary: Unary expression: "operator expression"
 type Unary struct {
-	Operator reading.Token
+	Operator token.Token
 	Right    Expr
 }
 
@@ -151,7 +153,7 @@ func (expr *Unary) Accept(visitor ExprVisitor) interface{} {
 
 // Variable expressions
 type Variable struct {
-	Name reading.Token
+	Name token.Token
 }
 
 func (expr *Variable) Accept(visitor ExprVisitor) interface{} {

@@ -13,11 +13,16 @@ type LoxClass struct {
 	Methods map[string]*LoxFunction
 }
 
-func (l *LoxClass) FindMethod(name string) *LoxFunction {
+func (l *LoxClass) FindMethod(name string) (*LoxFunction, bool) {
+	fmt.Printf("Looking for method: %s in class %s\n", name, l.Name)
+	fmt.Printf("Available methods: %+v\n", l.Methods)
+
 	if value, ok := l.Methods[name]; ok {
-		return value
+		fmt.Println("Method found:", name)
+		return value, true
 	}
-	return nil
+	fmt.Println("Method not found", name)
+	return nil, false
 }
 
 func (l *LoxClass) String() string {
@@ -31,16 +36,19 @@ func (l *LoxClass) Call(interpreter loxCallable.Interpreter, arguments []interfa
 	}
 	fmt.Printf("Instance created: %v\n", instance)
 
-	for name, method := range l.Methods {
-		boundMethod := method.Bind(instance)
-		instance.Fields[name] = boundMethod
-		fmt.Printf("Method: %s\n", instance.Fields[name])
+	initializer, exists := l.FindMethod("init")
+	if exists {
+		initializer.Bind(instance).Call(interpreter, arguments)
 	}
 	return instance
 }
 
 func (l *LoxClass) Arity() int {
-	return 0
+	initializer, exists := l.FindMethod("init")
+	if !exists {
+		return 0
+	}
+	return initializer.Arity()
 }
 
 var _ loxCallable.LoxCallable = (*LoxClass)(nil)

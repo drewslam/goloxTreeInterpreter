@@ -1,4 +1,4 @@
-package internal
+package returnValue
 
 type ReturnValue struct {
 	Value interface{}

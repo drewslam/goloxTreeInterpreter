@@ -10,14 +10,16 @@ import (
 )
 
 type LoxFunction struct {
-	Declaration *ast.Function
-	Closure     *environment.Environment
+	Declaration   *ast.Function
+	Closure       *environment.Environment
+	IsInitializer bool
 }
 
-func NewLoxFunction(declaration *ast.Function, closure *environment.Environment) *LoxFunction {
+func NewLoxFunction(declaration *ast.Function, closure *environment.Environment, isInitializer bool) *LoxFunction {
 	return &LoxFunction{
-		Declaration: declaration,
-		Closure:     closure,
+		IsInitializer: isInitializer,
+		Declaration:   declaration,
+		Closure:       closure,
 	}
 }
 
@@ -27,8 +29,9 @@ func (l *LoxFunction) Bind(instance *LoxInstance) *LoxFunction {
 	}
 	environment.Define("this", instance)
 	return &LoxFunction{
-		Declaration: l.Declaration,
-		Closure:     environment,
+		Declaration:   l.Declaration,
+		Closure:       environment,
+		IsInitializer: l.IsInitializer,
 	}
 }
 
@@ -47,10 +50,19 @@ func (l *LoxFunction) Call(interpreter loxCallable.Interpreter, arguments []inte
 		environment.Define(param.Lexeme, arguments[i])
 	}
 
+	// var result interface{} = nil
+
 	defer func() {
 		if r := recover(); r != nil {
 			if returnValue, ok := r.(*returnValue.ReturnValue); ok {
-				result = returnValue.Value
+				if l.IsInitializer {
+					fmt.Println("Captured return:", returnValue.Value) // debug print
+					result = l.Closure.GetAt(0, "this")
+				} else {
+					fmt.Println("Final return value:", returnValue.Value) // debug print
+					result = returnValue.Value
+				}
+				return
 			} else {
 				panic(r)
 			}
@@ -59,7 +71,12 @@ func (l *LoxFunction) Call(interpreter loxCallable.Interpreter, arguments []inte
 
 	interpreter.ExecuteBlock(l.Declaration.Body, environment)
 
-	return
+	if result == nil && l.IsInitializer {
+		result = l.Closure.GetAt(0, "this")
+	}
+
+	fmt.Println("Function result:", result) // debug print
+	return                                  //result
 }
 
 var _ loxCallable.LoxCallable = (*LoxFunction)(nil)

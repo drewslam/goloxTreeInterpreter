@@ -16,6 +16,7 @@ type Interpreter struct {
 	exprVisitor ast.ExprVisitor
 	stmtVisitor ast.StmtVisitor
 	Globals     *environment.Environment
+	locals      map[ast.Expr]int
 	environment *environment.Environment
 }
 
@@ -53,6 +54,10 @@ func (i *Interpreter) execute(stmt ast.Stmt) {
 	stmt.Accept(i)
 }
 
+func (i *Interpreter) Resolve(expr ast.Expr, depth int) {
+	i.locals[expr] = depth
+}
+
 func (i *Interpreter) GetGlobals() *environment.Environment {
 	return i.Globals
 }
@@ -65,6 +70,7 @@ func (i *Interpreter) ExecuteBlock(statements []ast.Stmt, environment *environme
 	defer func() {
 		if r := recover(); r != nil {
 			if returnValue, ok := r.(*returnValue.ReturnValue); ok {
+				fmt.Println("Caught return in ExecuteBlock:", returnValue.Value) // Debugging
 				panic(returnValue)
 			}
 			panic(r)
@@ -89,8 +95,9 @@ func (i *Interpreter) VisitClassStmt(stmt *ast.Class) interface{} {
 	methods := make(map[string]*object.LoxFunction)
 	for _, method := range stmt.Methods {
 		function := &object.LoxFunction{
-			Declaration: &method,
-			Closure:     i.environment,
+			Declaration:   method,
+			Closure:       i.environment,
+			IsInitializer: method.Name.Lexeme == "init",
 		}
 		methods[method.Name.Lexeme] = function
 	}
@@ -122,7 +129,7 @@ func (i *Interpreter) VisitExpressionStmt(stmt *ast.Expression) interface{} {
 }
 
 func (i *Interpreter) VisitFunctionStmt(stmt *ast.Function) interface{} {
-	function := object.NewLoxFunction(stmt, i.environment)
+	function := object.NewLoxFunction(stmt, i.environment, false)
 	i.environment.Define(stmt.Name.Lexeme, function)
 	return nil
 }
@@ -147,7 +154,7 @@ func (i *Interpreter) VisitReturnStmt(stmt *ast.Return) interface{} {
 	if stmt.Value != nil {
 		value = i.evaluate(stmt.Value)
 	}
-
+	fmt.Println("Throwing return:", value) // debug
 	panic(&returnValue.ReturnValue{Value: value})
 }
 
@@ -174,9 +181,14 @@ func (i *Interpreter) VisitWhileStmt(stmt *ast.While) interface{} {
 
 func (i *Interpreter) VisitAssignExpr(expr *ast.Assign) interface{} {
 	value := i.evaluate(expr.Value)
-	if err := i.environment.Assign(expr.Name, value); err != nil {
-		panic(errors.NewRuntimeError(expr.Name, "Undefined variable '"+expr.Name.Lexeme+"'"))
+
+	distance, exists := i.locals[expr]
+	if exists {
+		i.environment.AssignAt(distance, expr.Name, value)
+	} else {
+		i.Globals.Assign(expr.Name, value)
 	}
+
 	return value
 }
 
@@ -247,7 +259,12 @@ func (i *Interpreter) VisitCallExpr(expr *ast.Call) interface{} {
 		return errors.NewRuntimeError(expr.Paren, message)
 	}
 
-	return function.Call(i, arguments)
+	fmt.Println("Global Environment:", i.Globals)
+
+	result := function.Call(i, arguments)
+	fmt.Println("Call result:", result) // debug print
+
+	return result
 }
 
 func (i *Interpreter) VisitGetExpr(expr *ast.Get) interface{} {
@@ -319,7 +336,17 @@ func (i *Interpreter) VisitUnaryExpr(expr *ast.Unary) interface{} {
 }
 
 func (i *Interpreter) VisitVariableExpr(expr *ast.Variable) interface{} {
-	return i.environment.Get(expr.Name)
+	return i.lookUpVariable(expr.Name, expr)
+}
+
+func (i *Interpreter) lookUpVariable(name token.Token, expr ast.Expr) interface{} {
+	distance, exists := i.locals[expr]
+
+	if exists {
+		return i.environment.GetAt(distance, name.Lexeme)
+	} else {
+		return i.Globals.Get(name)
+	}
 }
 
 func (i *Interpreter) checkNumberOperand(operator token.Token, operand interface{}) {

@@ -15,8 +15,9 @@ func peek(stack []map[string]bool) (map[string]bool, bool) {
 }
 
 type Resolver struct {
-	interpreter *interpreter.Interpreter
-	scopes      []map[string]bool
+	Interpreter     *interpreter.Interpreter
+	scopes          []map[string]bool
+	CurrentFunction FunctionType
 }
 
 type FunctionType int
@@ -24,6 +25,7 @@ type FunctionType int
 const (
 	NOT_FUNCTION FunctionType = iota
 	FUNCTION
+	INITIALIZER
 	METHOD
 )
 
@@ -60,13 +62,16 @@ func (r *Resolver) VisitClassStmt(stmt *ast.Class) interface{} {
 	r.define(stmt.Name)
 
 	r.beginScope()
-	if len(r.Scopes) > 0 {
-		r.Scopes[len(r.Scopes)-1]["this"] = true
+	if len(r.scopes) > 0 {
+		r.scopes[len(r.scopes)-1]["this"] = true
 	}
 
 	for _, method := range stmt.Methods {
 		declaration := METHOD
-		r.resolveFunction(&method, declaration)
+		if method.Name.Lexeme == "init" {
+			declaration = INITIALIZER
+		}
+		r.resolveFunction(method, declaration)
 	}
 	r.endScope()
 
@@ -83,7 +88,7 @@ func (r *Resolver) VisitFunctionStmt(stmt *ast.Function) interface{} {
 	r.declare(stmt.Name)
 	r.define(stmt.Name)
 
-	r.resolveFunction(stmt)
+	r.resolveFunction(stmt, FUNCTION)
 	return nil
 }
 
@@ -102,7 +107,15 @@ func (r *Resolver) VisitPrintStmt(stmt *ast.Print) interface{} {
 }
 
 func (r *Resolver) VisitReturnStmt(stmt *ast.Return) interface{} {
+	if r.CurrentFunction == NOT_FUNCTION {
+		errors.NewRuntimeError(stmt.Keyword, "Can't return from top level code.'")
+	}
+
 	if stmt.Value != nil {
+		if r.CurrentFunction == INITIALIZER {
+			errors.NewRuntimeError(stmt.Keyword, "Can't return a value from an initializer.")
+		}
+
 		r.resolve(stmt.Value)
 	}
 	return nil
@@ -118,7 +131,10 @@ func (r *Resolver) resolve(input interface{}) {
 	}
 }
 
-func (r *Resolver) resolveFunction(function *ast.Function) {
+func (r *Resolver) resolveFunction(function *ast.Function, functiontype FunctionType) {
+	enclosingFunction := r.CurrentFunction
+	r.CurrentFunction = functiontype
+
 	r.beginScope()
 	for _, param := range function.Params {
 		r.declare(param)
@@ -126,6 +142,8 @@ func (r *Resolver) resolveFunction(function *ast.Function) {
 	}
 	r.resolve(function.Body)
 	r.endScope()
+
+	r.CurrentFunction = enclosingFunction
 }
 
 func (r *Resolver) beginScope() {
@@ -144,6 +162,8 @@ func (r *Resolver) declare(name token.Token) {
 	scope, ok := peek(r.scopes)
 	if ok {
 		scope[name.Lexeme] = false
+	} else {
+		errors.NewRuntimeError(name, "Already a variable with this name in this scope.")
 	}
 }
 
@@ -161,7 +181,7 @@ func (r *Resolver) define(name token.Token) {
 func (r *Resolver) resolveLocal(expr ast.Expr, name token.Token) {
 	for i := len(r.scopes) - 1; i >= 0; i-- {
 		if _, ok := r.scopes[i][name.Lexeme]; ok {
-			r.interpreter.Resolve(expr, len(r.scopes)-1-i)
+			r.Interpreter.Resolve(expr, len(r.scopes)-1-i)
 			return
 		}
 	}
@@ -245,8 +265,10 @@ func (r *Resolver) VisitUnaryExpr(expr *ast.Unary) interface{} {
 func (r *Resolver) VisitVariableExpr(expr *ast.Variable) interface{} {
 	if len(r.scopes) > 0 {
 		if scope, ok := peek(r.scopes); ok {
-			if defined, exists := scope[expr.Name.Lexeme]; exists && !defined {
-				errors.ReportParseError(expr.Name, "Can't read local variable in its own initializer.")
+			if defined, exists := scope[expr.Name.Lexeme]; exists {
+				if !defined {
+					errors.ReportParseError(expr.Name, "Can't read local variable in its own initializer.")
+				}
 			}
 		}
 	}

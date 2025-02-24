@@ -1,8 +1,8 @@
 package loxCallable
 
 import (
+	"github.com/drewslam/goloxTreeInterpreter/ast"
 	"github.com/drewslam/goloxTreeInterpreter/environment"
-	"github.com/drewslam/goloxTreeInterpreter/pkg/ast"
 )
 
 type Interpreter interface {
@@ -23,20 +23,3 @@ func NewClockCallable() LoxCallable {
 func RegisterNatives(env *environment.Environment) {
 	env.Define("clock", NewClockCallable())
 }
-
-/*
-type Clock struct{}
-
-func (c *Clock) Arity() int {
-	return 0
-}
-
-func (c *Clock) Call(interpreter Interpreter, arguments []interface{}) interface{} {
-	return float64(time.Now().UnixNano()) / 1e9
-}
-
-func (c *Clock) String() string {
-	return "<native fn>"
-}
-
-var _ LoxCallable = (*Clock)(nil) */

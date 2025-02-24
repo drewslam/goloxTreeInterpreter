@@ -2,13 +2,7 @@ package loxCallable
 
 import (
 	"time"
-
-	"github.com/drewslam/goloxTreeInterpreter/environment"
 )
-
-func RegisterNatives(env *environment.Environment) {
-	env.Define("clock", NewClockCallable())
-}
 
 type Clock struct{}
 
