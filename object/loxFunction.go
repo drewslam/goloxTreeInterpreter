@@ -26,6 +26,7 @@ func NewLoxFunction(declaration *ast.Function, closure *environment.Environment,
 func (l *LoxFunction) Bind(instance *LoxInstance) *LoxFunction {
 	environment := &environment.Environment{
 		Enclosing: l.Closure,
+		Values:    make(map[string]interface{}),
 	}
 	environment.Define("this", instance)
 	return &LoxFunction{
@@ -56,10 +57,8 @@ func (l *LoxFunction) Call(interpreter loxCallable.Interpreter, arguments []inte
 		if r := recover(); r != nil {
 			if returnValue, ok := r.(*returnValue.ReturnValue); ok {
 				if l.IsInitializer {
-					fmt.Println("Captured return:", returnValue.Value) // debug print
 					result = l.Closure.GetAt(0, "this")
 				} else {
-					fmt.Println("Final return value:", returnValue.Value) // debug print
 					result = returnValue.Value
 				}
 				return
@@ -75,8 +74,7 @@ func (l *LoxFunction) Call(interpreter loxCallable.Interpreter, arguments []inte
 		result = l.Closure.GetAt(0, "this")
 	}
 
-	fmt.Println("Function result:", result) // debug print
-	return                                  //result
+	return //result
 }
 
 var _ loxCallable.LoxCallable = (*LoxFunction)(nil)

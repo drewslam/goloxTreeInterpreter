@@ -1,8 +1,6 @@
 package object
 
 import (
-	"fmt"
-
 	"github.com/drewslam/goloxTreeInterpreter/loxCallable"
 )
 
@@ -14,14 +12,11 @@ type LoxClass struct {
 }
 
 func (l *LoxClass) FindMethod(name string) (*LoxFunction, bool) {
-	fmt.Printf("Looking for method: %s in class %s\n", name, l.Name)
-	fmt.Printf("Available methods: %+v\n", l.Methods)
 
 	if value, ok := l.Methods[name]; ok {
-		fmt.Println("Method found:", name)
 		return value, true
 	}
-	fmt.Println("Method not found", name)
+
 	return nil, false
 }
 
@@ -34,7 +29,6 @@ func (l *LoxClass) Call(interpreter loxCallable.Interpreter, arguments []interfa
 		Klass:  l,
 		Fields: make(map[string]interface{}),
 	}
-	fmt.Printf("Instance created: %v\n", instance)
 
 	initializer, exists := l.FindMethod("init")
 	if exists {

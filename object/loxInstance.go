@@ -1,8 +1,6 @@
 package object
 
 import (
-	"fmt"
-
 	"github.com/drewslam/goloxTreeInterpreter/errors"
 	"github.com/drewslam/goloxTreeInterpreter/token"
 )
@@ -17,13 +15,13 @@ func (l *LoxInstance) String() string {
 }
 
 func (l *LoxInstance) Get(name token.Token) interface{} {
-	/*if value, exists := l.Fields[name.Lexeme]; exists {
+
+	if value, exists := l.Fields[name.Lexeme]; exists {
 		return value
-	}*/
+	}
 
 	method, exists := l.Klass.FindMethod(name.Lexeme)
 	if exists {
-		fmt.Printf("Binding method: %v\n", method)
 		return method.Bind(l)
 	}
 

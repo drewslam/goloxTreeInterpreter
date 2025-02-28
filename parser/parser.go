@@ -13,9 +13,11 @@ type Parser struct {
 	current int
 }
 
-func (p *Parser) NewParser(tokens []token.Token) {
-	p.tokens = tokens
-	p.current = 0
+func NewParser(tokens []token.Token) *Parser {
+	return &Parser{
+		tokens:  tokens,
+		current: 0,
+	}
 }
 
 func (p *Parser) expression() ast.Expr {
@@ -26,7 +28,7 @@ func (p *Parser) declaration() ast.Stmt {
 	defer func() {
 		if r := recover(); r != nil {
 			// Check if it's a parse error
-			if _, ok := r.(*errors.ParseError); ok {
+			if _, ok := r.(*errors.LoxError); ok {
 				// Return nil if a ParseError is caught
 				return
 			}
@@ -54,10 +56,9 @@ func (p *Parser) classDeclaration() ast.Stmt {
 
 	var methods []*ast.Function
 	for !p.check(token.RIGHT_BRACE) && !p.isAtEnd() {
-		method := p.function("method")
-		if method != nil {
+		method, err := p.function("method")
+		if err == nil {
 			methods = append(methods, method)
-			fmt.Printf("Parsed method: %+v\n", method)
 		}
 	}
 
@@ -126,12 +127,12 @@ func (p *Parser) forStatement() ast.Stmt {
 		}
 	}
 
-	/*	if condition == nil {
-			condition = &ast.Literal{
-				Value: true,
-			}
+	if condition == nil {
+		condition = &ast.Literal{
+			Value: true,
 		}
-	*/
+	}
+
 	body = &ast.While{
 		Condition: condition,
 		Body:      body,
@@ -203,12 +204,6 @@ func (p *Parser) whileStatement() ast.Stmt {
 
 	body := p.statement()
 
-	/*	body = &ast.Block{
-			Statements: []ast.Stmt{
-				body,
-			},
-		}
-	*/
 	return &ast.While{
 		Condition: condition,
 		Body:      body,
@@ -221,11 +216,9 @@ func (p *Parser) expressionStatement() ast.Stmt {
 	return ast.NewExpressionStmt(expr)
 }
 
-func (p *Parser) function(kind string) *ast.Function {
+func (p *Parser) function(kind string) (*ast.Function, *errors.LoxError) {
 	message := fmt.Sprintf("Expect %v name.", kind)
-	fmt.Println("Parsing method: ", p.peek()) // debug print
 	name := p.consume(token.IDENTIFIER, message)
-	fmt.Println("Parsed method: ", p.peek()) // debug print
 
 	p.consume(token.LEFT_PAREN, "Expect '(' after function name.")
 
@@ -233,7 +226,7 @@ func (p *Parser) function(kind string) *ast.Function {
 	if !p.check(token.RIGHT_PAREN) {
 		for {
 			if len(parameters) >= 255 {
-				errors.ReportParseError(p.peek(), "Can't have more than 255 parameters.")
+				return nil, errors.NewParseError(p.peek(), "Can't have more than 255 parameters.")
 			}
 			parameters = append(parameters, p.consume(token.IDENTIFIER, "Expect parameter name."))
 			if !p.match(token.COMMA) {
@@ -252,15 +245,11 @@ func (p *Parser) function(kind string) *ast.Function {
 		Name:   name,
 		Params: parameters,
 		Body:   body,
-	}
+	}, nil
 }
 
 func (p *Parser) block() []ast.Stmt {
 	var statements []ast.Stmt
-
-	// p.consume(token.LEFT_BRACE, "Expect '{' before block.")
-
-	fmt.Println("Parsing block, next token: ", p.peek()) // debug print
 
 	for !p.check(token.RIGHT_BRACE) && !p.isAtEnd() {
 		statements = append(statements, p.declaration())
@@ -268,37 +257,39 @@ func (p *Parser) block() []ast.Stmt {
 
 	p.consume(token.RIGHT_BRACE, "Expect '}' after block.")
 
-	fmt.Println("Finished parsing block, statements: ", statements) // debug print
-
 	return statements
 }
 
-func (p *Parser) assignment() ast.Expr {
+func (p *Parser) assignment() (ast.Expr, *errors.LoxError) {
 	expr := p.or()
 
 	if p.match(token.EQUAL) {
 		equals := p.previous()
-		value := p.assignment()
+		value, err := p.assignment()
+
+		if err != nil {
+			return nil, err
+		}
 
 		if variable, ok := expr.(*ast.Variable); ok {
 			name := variable.Name
 			return &ast.Assign{
 				Name:  name,
 				Value: value,
-			}
+			}, nil
 		}
 		if get, ok := expr.(*ast.Get); ok {
 			return &ast.Set{
 				Object: get.Object,
 				Name:   get.Name,
 				Value:  value,
-			}
+			}, nil
 		}
 
-		errors.ReportParseError(equals, "Invalid assignment target.")
+		return nil, errors.NewParseError(equals, "Invalid assignment target.")
 	}
 
-	return expr
+	return expr, nil
 }
 
 func (p *Parser) or() ast.Expr {
@@ -365,55 +356,63 @@ func (p *Parser) comparison() ast.Expr {
 }
 
 func (p *Parser) term() ast.Expr {
-	expr := p.factor()
+	expr, err := p.factor()
+	if err != nil {
+		return nil
+	}
 
 	for p.match(token.MINUS, token.PLUS) {
 		operator := p.previous()
-		right := p.factor()
-		expr = &ast.Binary{
-			Left:     expr,
-			Operator: operator,
-			Right:    right,
+		if right, err := p.factor(); err != nil {
+			expr = &ast.Binary{
+				Left:     expr,
+				Operator: operator,
+				Right:    right,
+			}
 		}
 	}
 	return expr
 }
 
-func (p *Parser) factor() ast.Expr {
-	expr := p.unary()
-
-	for p.match(token.SLASH, token.STAR) {
-		operator := p.previous()
-		right := p.unary()
-		expr = &ast.Binary{
-			Left:     expr,
-			Operator: operator,
-			Right:    right,
+func (p *Parser) factor() (ast.Expr, *errors.LoxError) {
+	expr, err := p.unary()
+	if err != nil {
+		for p.match(token.SLASH, token.STAR) {
+			operator := p.previous()
+			if right, err := p.unary(); err != nil {
+				expr = &ast.Binary{
+					Left:     expr,
+					Operator: operator,
+					Right:    right,
+				}
+			}
 		}
 	}
-	return expr
+
+	return expr, nil
 }
 
-func (p *Parser) unary() ast.Expr {
+func (p *Parser) unary() (ast.Expr, error) {
 	if p.match(token.BANG, token.MINUS) {
 		operator := p.previous()
-		right := p.unary()
-		return &ast.Unary{
-			Operator: operator,
-			Right:    right,
+		if right, err := p.unary(); err != nil {
+			return &ast.Unary{
+				Operator: operator,
+				Right:    right,
+			}, nil
 		}
 	}
 
 	return p.call()
 }
 
-func (p *Parser) finishCall(callee ast.Expr) ast.Expr {
+func (p *Parser) finishCall(callee ast.Expr) (ast.Expr, *errors.LoxError) {
 	var arguments []ast.Expr
 
 	if !p.check(token.RIGHT_PAREN) {
 		for {
 			if len(arguments) >= 255 {
-				errors.ReportParseError(p.peek(), "Can't have more than 255 arguments.")
+				return nil, errors.NewParseError(p.peek(), "Can't have more than 255 arguments.")
 			}
 
 			arguments = append(arguments, p.expression())
@@ -430,15 +429,22 @@ func (p *Parser) finishCall(callee ast.Expr) ast.Expr {
 		Callee:    callee,
 		Paren:     paren,
 		Arguments: arguments,
-	}
+	}, nil
 }
 
-func (p *Parser) call() ast.Expr {
-	expr := p.primary()
+func (p *Parser) call() (ast.Expr, error) {
+	expr, err := p.primary()
+	if err != nil {
+		return nil, err
+	}
 
 	for {
 		if p.match(token.LEFT_PAREN) {
-			expr = p.finishCall(expr)
+			if val, err := p.finishCall(expr); err != nil {
+				expr = val
+			} else {
+				return nil, err
+			}
 		} else if p.match(token.DOT) {
 			name := p.consume(token.IDENTIFIER, "Expect property name after '.'.")
 			expr = &ast.Get{
@@ -450,42 +456,42 @@ func (p *Parser) call() ast.Expr {
 		}
 	}
 
-	return expr
+	return expr, nil
 }
 
-func (p *Parser) primary() ast.Expr {
+func (p *Parser) primary() (ast.Expr, *errors.LoxError) {
 	if p.match(token.FALSE) {
 		return &ast.Literal{
 			Value: false,
-		}
+		}, nil
 	}
 	if p.match(token.TRUE) {
 		return &ast.Literal{
 			Value: true,
-		}
+		}, nil
 	}
 	if p.match(token.NIL) {
 		return &ast.Literal{
 			Value: nil,
-		}
+		}, nil
 	}
 
 	if p.match(token.NUMBER, token.STRING) {
 		return &ast.Literal{
 			Value: p.previous().Literal,
-		}
+		}, nil
 	}
 
 	if p.match(token.THIS) {
 		return &ast.This{
 			Keyword: p.previous(),
-		}
+		}, nil
 	}
 
 	if p.match(token.IDENTIFIER) {
 		return &ast.Variable{
 			Name: p.previous(),
-		}
+		}, nil
 	}
 
 	if p.match(token.LEFT_PAREN) {
@@ -494,22 +500,19 @@ func (p *Parser) primary() ast.Expr {
 		p.consume(token.RIGHT_PAREN, "Expect ')' after expression.")
 		return &ast.Grouping{
 			Expression: expr,
-		}
+		}, nil
 	}
 
 	// Error handling if no valid expression is found
-	errors.ReportParseError(p.peek(), "Expect expression.")
-	return nil
+	return nil, errors.NewParseError(p.peek(), "Expect expression.")
 }
 
-func (p *Parser) Parse() []ast.Stmt {
-	var statements []ast.Stmt
-
+func (p *Parser) Parse() (statements []ast.Stmt, err error) {
 	defer func() {
 		if r := recover(); r != nil {
 			// Check if it's a parse error
-			if _, ok := r.(*errors.ParseError); ok {
-				// Return nil if a ParseError is caught
+			if loxErr, ok := r.(*errors.LoxError); ok {
+				err = loxErr
 				return
 			}
 			// Re-panic for unexpected errors
@@ -518,10 +521,13 @@ func (p *Parser) Parse() []ast.Stmt {
 	}()
 
 	for !p.isAtEnd() {
-		statements = append(statements, p.declaration())
+		stmt := p.declaration()
+		if stmt != nil {
+			statements = append(statements, stmt)
+		}
 	}
 
-	return statements
+	return
 }
 
 func (p *Parser) match(types ...token.TokenType) bool {
@@ -539,7 +545,10 @@ func (p *Parser) consume(tokentype token.TokenType, message string) token.Token 
 		return p.advance()
 	}
 
-	errors.ReportError(p.peek().Line, message)
+	err := errors.NewParseError(p.peek(), message)
+	if err != nil {
+
+	}
 	p.synchronize()
 
 	return token.Token{}

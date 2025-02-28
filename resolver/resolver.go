@@ -159,8 +159,7 @@ func (r *Resolver) declare(name token.Token) {
 		return
 	}
 
-	scope, ok := peek(r.scopes)
-	if ok {
+	if scope, ok := peek(r.scopes); ok {
 		scope[name.Lexeme] = false
 	} else {
 		errors.NewRuntimeError(name, "Already a variable with this name in this scope.")
@@ -268,6 +267,7 @@ func (r *Resolver) VisitVariableExpr(expr *ast.Variable) interface{} {
 			if defined, exists := scope[expr.Name.Lexeme]; exists {
 				if !defined {
 					errors.ReportParseError(expr.Name, "Can't read local variable in its own initializer.")
+					return nil
 				}
 			}
 		}

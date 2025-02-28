@@ -6,63 +6,52 @@ import (
 	"github.com/drewslam/goloxTreeInterpreter/token"
 )
 
-// HadError tracks whether a syntax error has occured
-var HadError bool = false
-var HadRuntimeError bool = false
-
-// ParseError is a custom error type for parser errors.
-type ParseError struct {
+// LoxError represents an error in the interpreter
+type LoxError struct {
+	Line    int
+	Where   string
 	Message string
-}
-
-// RuntimeError is a custom error type for runtime errors.
-type RuntimeError struct {
-	Token   token.Token
-	Message string
-}
-
-// Error implements the error interface for ParseError.
-func (e *ParseError) Error() string {
-	return e.Message
+	IsFatal bool
 }
 
 // Error implements the error interface for RuntimeError.
-func (r *RuntimeError) Error() string {
-	return fmt.Sprintf("[line %d] %s", r.Token.Line, r.Message)
+func (e *LoxError) Error() string {
+	return fmt.Sprintf("[line %d] Error %s: %s", e.Line, e.Where, e.Message)
 }
 
-// NewParseError creates a new ParseError instance and marks HadError as true.
-func NewParseError(message string) *ParseError {
-	HadError = true
-	return &ParseError{Message: message}
-}
-
-// NewRuntimeError creates a new RuntimeError instance and marks HadError as true.
-func NewRuntimeError(token token.Token, message string) *RuntimeError {
-	HadRuntimeError = true
-	return &RuntimeError{
-		Token:   token,
+// NewParseError creates a parse error (non-fatal)
+func NewParseError(token token.Token, message string) *LoxError {
+	where := " at end"
+	if token.Type.String() != "EOF" {
+		where = " at '" + token.Lexeme + "'"
+	}
+	return &LoxError{
+		Line:    token.Line,
+		Where:   where,
 		Message: message,
+		IsFatal: false,
 	}
 }
 
-// ParseError function to report an error for a specific token and panic with a ParseError
-func ReportParseError(token token.Token, message string) {
-	if token.Type.String() == "EOF" {
-		report(token.Line, " at end", message)
-	} else {
-		report(token.Line, " at '"+token.Lexeme+"'", message)
+// NewRuntimeError creates a runtime error (fatal)
+func NewRuntimeError(token token.Token, where string, message string) *LoxError {
+	return &LoxError{
+		Line:    token.Line,
+		Where:   where,
+		Message: message,
+		IsFatal: true,
 	}
-	panic(NewParseError(message))
 }
 
-// Reports an error at a specific line
-func ReportError(line int, message string) {
-	report(line, "", message)
+// Report error prints an error without panicking
+func ReportError(err *LoxError) {
+	fmt.Println(err.Error())
 }
 
-// Report formats and prints the error message
-func report(line int, where string, message string) {
-	fmt.Printf("[line %d] Error %v: %v\n", line, where, message)
-	HadError = true
+// ReportAndPanic reports an error and panics if it's fatal
+func ReportAndPanic(err *LoxError) {
+	fmt.Println(err.Error())
+	if err.IsFatal {
+		panic(err)
+	}
 }

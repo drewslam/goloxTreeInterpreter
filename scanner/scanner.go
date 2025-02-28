@@ -1,6 +1,7 @@
 package scanner
 
 import (
+	"fmt"
 	"strconv"
 
 	"github.com/drewslam/goloxTreeInterpreter/errors"
@@ -44,10 +45,12 @@ func NewScanner(source string) *Scanner {
 	}
 }
 
-func (s *Scanner) ScanTokens() []token.Token {
+func (s *Scanner) ScanTokens() ([]token.Token, error) {
 	for !s.isAtEnd() {
 		s.Start = s.Current
-		s.scanToken()
+		if err := s.scanToken(); err != nil {
+			return nil, err
+		}
 	}
 
 	s.Tokens = append(s.Tokens, token.Token{
@@ -55,14 +58,14 @@ func (s *Scanner) ScanTokens() []token.Token {
 		Lexeme: "",
 		Line:   s.Line,
 	})
-	return s.Tokens
+	return s.Tokens, nil
 }
 
 func (s *Scanner) isAtEnd() bool {
 	return s.Current >= len(s.Source)
 }
 
-func (s *Scanner) scanToken() {
+func (s *Scanner) scanToken() error {
 	c := s.advance()
 	switch c {
 	case '(':
@@ -134,9 +137,16 @@ func (s *Scanner) scanToken() {
 		} else if s.isAlpha(c) {
 			s.identifier()
 		} else {
-			errors.ReportError(s.Line, "Unexpected character.")
+			errToken := token.Token{
+				Type:   token.IDENTIFIER,
+				Lexeme: string(c),
+				Line:   s.Line,
+			}
+			return errors.NewParseError(errToken, fmt.Sprintf("Unexpected character: %c", c))
 		}
 	}
+
+	return nil
 }
 
 func (s *Scanner) identifier() {
@@ -177,7 +187,7 @@ func (s *Scanner) number() {
 	s.addToken(token.NUMBER, num)
 }
 
-func (s *Scanner) string() {
+func (s *Scanner) string() *errors.LoxError {
 	for !s.isAtEnd() && s.peek() != '"' {
 		if s.peek() == '\n' {
 			s.Line++
@@ -186,8 +196,7 @@ func (s *Scanner) string() {
 	}
 
 	if s.isAtEnd() {
-		errors.ReportError(s.Line, "Unterminated string.")
-		return
+		return errors.NewParseError(s.Line, "Unterminated string.")
 	}
 
 	// The closing "

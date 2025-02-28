@@ -70,7 +70,6 @@ func (i *Interpreter) ExecuteBlock(statements []ast.Stmt, environment *environme
 	defer func() {
 		if r := recover(); r != nil {
 			if returnValue, ok := r.(*returnValue.ReturnValue); ok {
-				fmt.Println("Caught return in ExecuteBlock:", returnValue.Value) // Debugging
 				panic(returnValue)
 			}
 			panic(r)
@@ -106,13 +105,13 @@ func (i *Interpreter) VisitClassStmt(stmt *ast.Class) interface{} {
 		Name:    stmt.Name.Lexeme,
 		Methods: methods,
 	}
-
-	instance := &object.LoxInstance{
-		Klass:  klass,
-		Fields: make(map[string]interface{}),
-	}
-
-	i.environment.Assign(stmt.Name, instance)
+	/*
+		instance := &object.LoxInstance{
+			Klass:  klass,
+			Fields: make(map[string]interface{}),
+		}
+	*/
+	i.environment.Assign(stmt.Name, klass)
 	return nil
 }
 
@@ -154,7 +153,6 @@ func (i *Interpreter) VisitReturnStmt(stmt *ast.Return) interface{} {
 	if stmt.Value != nil {
 		value = i.evaluate(stmt.Value)
 	}
-	fmt.Println("Throwing return:", value) // debug
 	panic(&returnValue.ReturnValue{Value: value})
 }
 
@@ -182,8 +180,7 @@ func (i *Interpreter) VisitWhileStmt(stmt *ast.While) interface{} {
 func (i *Interpreter) VisitAssignExpr(expr *ast.Assign) interface{} {
 	value := i.evaluate(expr.Value)
 
-	distance, exists := i.locals[expr]
-	if exists {
+	if distance, exists := i.locals[expr]; exists {
 		i.environment.AssignAt(distance, expr.Name, value)
 	} else {
 		i.Globals.Assign(expr.Name, value)
@@ -241,28 +238,25 @@ func (i *Interpreter) VisitBinaryExpr(expr *ast.Binary) interface{} {
 }
 
 func (i *Interpreter) VisitCallExpr(expr *ast.Call) interface{} {
+	var result interface{}
 	callee := i.evaluate(expr.Callee)
-	fmt.Printf("Calling: %v\n", callee) // Debugging output
 
 	var arguments []interface{}
 	for _, argument := range expr.Arguments {
 		arguments = append(arguments, i.evaluate(argument))
 	}
 
-	if _, ok := callee.(loxCallable.LoxCallable); !ok {
+	function, ok := callee.(loxCallable.LoxCallable)
+	if !ok {
 		return errors.NewRuntimeError(expr.Paren, "Can only call functions and classes.")
 	}
 
-	function := callee.(loxCallable.LoxCallable)
 	if len(arguments) != function.Arity() {
 		message := fmt.Sprintf("Expected %d arguments but got %d.", function.Arity(), len(arguments))
 		return errors.NewRuntimeError(expr.Paren, message)
 	}
 
-	fmt.Println("Global Environment:", i.Globals)
-
-	result := function.Call(i, arguments)
-	fmt.Println("Call result:", result) // debug print
+	result = function.Call(i, arguments)
 
 	return result
 }

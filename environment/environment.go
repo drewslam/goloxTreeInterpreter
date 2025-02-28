@@ -12,13 +12,6 @@ type Environment struct {
 	Values    map[string]interface{}
 }
 
-/*func NewEnvrionment() *Environment {
-	return &Environment{
-		Enclosing: nil,
-		Values:    make(map[string]interface{}),
-	}
-}*/
-
 func NewEnvironment(enclosing ...*Environment) *Environment {
 	var parent *Environment
 	if len(enclosing) > 0 {
@@ -31,19 +24,21 @@ func NewEnvironment(enclosing ...*Environment) *Environment {
 	}
 }
 
-func (e *Environment) Get(name token.Token) interface{} {
+func (e *Environment) Get(name token.Token) (interface{}, *errors.LoxError) {
 	if value, exists := e.Values[name.Lexeme]; exists {
-		return value
+		return value, nil
 	}
 
 	if e.Enclosing != nil {
 		return e.Enclosing.Get(name)
 	}
 
-	panic(errors.NewRuntimeError(name, "Undefined variable '"+name.Lexeme+"'"))
+	errMsg := "Undefined variable: '" + name.Lexeme + "'"
+
+	return nil, errors.NewRuntimeError(name, fmt.Sprintf("%d", name.Line), errMsg)
 }
 
-func (e *Environment) Assign(name token.Token, value interface{}) error {
+func (e *Environment) Assign(name token.Token, value interface{}) *errors.LoxError {
 	if _, ok := e.Values[name.Lexeme]; ok {
 		e.Values[name.Lexeme] = value
 		return nil
@@ -53,23 +48,32 @@ func (e *Environment) Assign(name token.Token, value interface{}) error {
 		return e.Enclosing.Assign(name, value)
 	}
 
-	return fmt.Errorf("Undefined variable '%s'", name.Lexeme)
+	errMsg := "Undefined variable: '" + name.Lexeme + "'"
+
+	return errors.NewRuntimeError(name, fmt.Sprintf("%d", name.Line), errMsg)
 }
 
 func (e *Environment) Define(name string, value interface{}) {
 	e.Values[name] = value
 }
 
-func (e *Environment) Ancestor(distance int) *Environment {
+func (e *Environment) Ancestor(distance int) (*Environment, error) {
 	environment := e
 	for i := 0; i < distance; i++ {
+		if environment.Enclosing == nil {
+			return nil, fmt.Errorf("Environment chain not deep enough")
+		}
 		environment = environment.Enclosing
 	}
-	return environment
+	return environment, nil
 }
 
-func (e *Environment) GetAt(distance int, name string) interface{} {
-	return e.Ancestor(distance).Values[name]
+func (e *Environment) GetAt(distance int, name string) (interface{}, error) {
+	if res, err := e.Ancestor(distance).Values[name]; err != nil {
+		return res, nil
+	} else {
+		return nil, err
+	}
 }
 
 func (e *Environment) AssignAt(distance int, name token.Token, value interface{}) {
