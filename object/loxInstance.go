@@ -1,7 +1,9 @@
 package object
 
 import (
-	"github.com/drewslam/goloxTreeInterpreter/errors"
+	"fmt"
+
+	"github.com/drewslam/goloxTreeInterpreter/loxError"
 	"github.com/drewslam/goloxTreeInterpreter/token"
 )
 
@@ -25,7 +27,7 @@ func (l *LoxInstance) Get(name token.Token) interface{} {
 		return method.Bind(l)
 	}
 
-	return errors.NewRuntimeError(name, "Undefined property '"+name.Lexeme+"'.")
+	return loxError.NewRuntimeError(name, fmt.Sprintf("[Line %d]", name.Line), "Undefined property '"+name.Lexeme+"'.")
 }
 
 func (l *LoxInstance) Set(name token.Token, value interface{}) {

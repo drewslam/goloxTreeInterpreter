@@ -44,37 +44,43 @@ func (l *LoxFunction) Arity() int {
 	return len(l.Declaration.Params)
 }
 
-func (l *LoxFunction) Call(interpreter loxCallable.Interpreter, arguments []interface{}) (result interface{}) {
+func (l *LoxFunction) Call(interpreter loxCallable.Interpreter, arguments []interface{}) interface{} {
 	environment := environment.NewEnvironment(l.Closure)
 
+	// Ensure argument count matches parameter count
+	if len(arguments) != len(l.Declaration.Params) {
+		panic(fmt.Errorf("Expected %d arguments but got %d.", len(l.Declaration.Params), len(arguments)))
+	}
+
+	// Define function parameters in environment
 	for i, param := range l.Declaration.Params {
 		environment.Define(param.Lexeme, arguments[i])
 	}
 
-	// var result interface{} = nil
-
+	// Try executing the function
 	defer func() {
 		if r := recover(); r != nil {
-			if returnValue, ok := r.(*returnValue.ReturnValue); ok {
+			if rv, ok := r.(*returnValue.ReturnValue); ok {
+				// Set the result via the deferred function
 				if l.IsInitializer {
-					result = l.Closure.GetAt(0, "this")
-				} else {
-					result = returnValue.Value
+					thisVal, _ := l.Closure.GetAt(0, "this")
+					panic(&returnValue.ReturnValue{Value: thisVal})
 				}
-				return
-			} else {
-				panic(r)
+				panic(rv) // Rethrow the return value to the caller
 			}
+			panic(r) // Re-panic other errors
 		}
 	}()
 
 	interpreter.ExecuteBlock(l.Declaration.Body, environment)
 
-	if result == nil && l.IsInitializer {
-		result = l.Closure.GetAt(0, "this")
+	// Ensure constructors return 'this'
+	if l.IsInitializer {
+		val, _ := l.Closure.GetAt(0, "this")
+		return val
 	}
 
-	return //result
+	return nil
 }
 
 var _ loxCallable.LoxCallable = (*LoxFunction)(nil)

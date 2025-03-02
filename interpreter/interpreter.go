@@ -5,8 +5,8 @@ import (
 
 	"github.com/drewslam/goloxTreeInterpreter/ast"
 	"github.com/drewslam/goloxTreeInterpreter/environment"
-	"github.com/drewslam/goloxTreeInterpreter/errors"
 	"github.com/drewslam/goloxTreeInterpreter/loxCallable"
+	"github.com/drewslam/goloxTreeInterpreter/loxError"
 	"github.com/drewslam/goloxTreeInterpreter/object"
 	"github.com/drewslam/goloxTreeInterpreter/returnValue"
 	"github.com/drewslam/goloxTreeInterpreter/token"
@@ -31,12 +31,14 @@ func NewInterpreter() *Interpreter {
 	}
 }
 
-func (i *Interpreter) Interpret(statements []ast.Stmt) {
+func (i *Interpreter) Interpret(statements []ast.Stmt) interface{} {
 	defer func() {
 		if r := recover(); r != nil {
 			switch v := r.(type) {
-			case *errors.RuntimeError:
-				i.reportRuntimeError(v)
+			case *loxError.LoxError:
+				if v.IsFatal {
+					loxError.ReportError(v)
+				}
 			case *returnValue.ReturnValue:
 				fmt.Println(v.Value)
 			default:
@@ -46,12 +48,15 @@ func (i *Interpreter) Interpret(statements []ast.Stmt) {
 	}()
 
 	for _, stmt := range statements {
-		i.execute(stmt)
+		if err := i.execute(stmt); err != nil {
+			panic(err)
+		}
 	}
+	return nil
 }
 
-func (i *Interpreter) execute(stmt ast.Stmt) {
-	stmt.Accept(i)
+func (i *Interpreter) execute(stmt ast.Stmt) interface{} {
+	return stmt.Accept(i)
 }
 
 func (i *Interpreter) Resolve(expr ast.Expr, depth int) {
@@ -62,7 +67,7 @@ func (i *Interpreter) GetGlobals() *environment.Environment {
 	return i.Globals
 }
 
-func (i *Interpreter) ExecuteBlock(statements []ast.Stmt, environment *environment.Environment) {
+func (i *Interpreter) ExecuteBlock(statements []ast.Stmt, environment *environment.Environment) error {
 	previous := i.environment
 	i.environment = environment
 	defer func() { i.environment = previous }()
@@ -79,13 +84,13 @@ func (i *Interpreter) ExecuteBlock(statements []ast.Stmt, environment *environme
 	for _, statement := range statements {
 		i.execute(statement)
 	}
+	return nil
 }
 
 var _ loxCallable.Interpreter = &Interpreter{}
 
 func (i *Interpreter) VisitBlockStmt(stmt *ast.Block) interface{} {
-	i.ExecuteBlock(stmt.Statements, environment.NewEnvironment(i.environment))
-	return nil
+	return i.ExecuteBlock(stmt.Statements, environment.NewEnvironment(i.environment))
 }
 
 func (i *Interpreter) VisitClassStmt(stmt *ast.Class) interface{} {
@@ -117,8 +122,17 @@ func (i *Interpreter) VisitClassStmt(stmt *ast.Class) interface{} {
 
 func (i *Interpreter) evaluate(expr ast.Expr) interface{} {
 	if expr == nil {
-		panic("Tried to evaluate a nil expression.")
+		panic(loxError.NewRuntimeError(token.Token{Line: 0}, "", "Tried to evaluate a nil expression."))
 	}
+
+	defer func() {
+		if r := recover(); r != nil {
+			if err, ok := r.(*loxError.LoxError); ok && err.IsFatal {
+				panic(err)
+			}
+		}
+	}()
+
 	return expr.Accept(i)
 }
 
@@ -224,7 +238,7 @@ func (i *Interpreter) VisitBinaryExpr(expr *ast.Binary) interface{} {
 				return leftVal + rightVal
 			}
 		}
-		panic(errors.NewRuntimeError(expr.Operator, "Operands must be two numbers or two strings."))
+		panic(loxError.NewRuntimeError(expr.Operator, fmt.Sprintf("[Line %d]: ", expr.Operator.Line), "Operands must be two numbers or two strings."))
 	case token.SLASH:
 		i.checkNumberOperands(expr.Operator, left, right)
 		return left.(float64) / right.(float64)
@@ -238,7 +252,6 @@ func (i *Interpreter) VisitBinaryExpr(expr *ast.Binary) interface{} {
 }
 
 func (i *Interpreter) VisitCallExpr(expr *ast.Call) interface{} {
-	var result interface{}
 	callee := i.evaluate(expr.Callee)
 
 	var arguments []interface{}
@@ -248,17 +261,15 @@ func (i *Interpreter) VisitCallExpr(expr *ast.Call) interface{} {
 
 	function, ok := callee.(loxCallable.LoxCallable)
 	if !ok {
-		return errors.NewRuntimeError(expr.Paren, "Can only call functions and classes.")
+		panic(loxError.NewRuntimeError(expr.Paren, fmt.Sprintf("[Line %d]: ", expr.Paren.Line), "Can only call functions and classes."))
 	}
 
 	if len(arguments) != function.Arity() {
 		message := fmt.Sprintf("Expected %d arguments but got %d.", function.Arity(), len(arguments))
-		return errors.NewRuntimeError(expr.Paren, message)
+		panic(loxError.NewRuntimeError(expr.Paren, fmt.Sprintf("[Line %d]: ", expr.Paren.Line), message))
 	}
 
-	result = function.Call(i, arguments)
-
-	return result
+	return function.Call(i, arguments)
 }
 
 func (i *Interpreter) VisitGetExpr(expr *ast.Get) interface{} {
@@ -267,7 +278,7 @@ func (i *Interpreter) VisitGetExpr(expr *ast.Get) interface{} {
 		return instance.Get(expr.Name)
 	}
 
-	return errors.NewRuntimeError(expr.Name, "Only instances have properties.")
+	return loxError.NewRuntimeError(expr.Name, fmt.Sprintf("[Line %d]: ", expr.Name.Line), "Only instances have properties.")
 }
 
 func (i *Interpreter) VisitGroupingExpr(expr *ast.Grouping) interface{} {
@@ -301,7 +312,7 @@ func (i *Interpreter) VisitSetExpr(expr *ast.Set) interface{} {
 	objekt := i.evaluate(expr.Object)
 
 	if _, ok := objekt.(*object.LoxInstance); !ok {
-		return errors.NewRuntimeError(expr.Name, "Only instances have fields.")
+		return loxError.NewRuntimeError(expr.Name, fmt.Sprintf("[Line %d]: ", expr.Name.Line), "Only instances have fields.")
 	}
 
 	value := i.evaluate(expr.Value)
@@ -337,9 +348,17 @@ func (i *Interpreter) lookUpVariable(name token.Token, expr ast.Expr) interface{
 	distance, exists := i.locals[expr]
 
 	if exists {
-		return i.environment.GetAt(distance, name.Lexeme)
+		res, err := i.environment.GetAt(distance, name.Lexeme)
+		if err != nil {
+			return err
+		}
+		return res
 	} else {
-		return i.Globals.Get(name)
+		res, err := i.Globals.Get(name)
+		if err != nil {
+			return err
+		}
+		return res
 	}
 }
 
@@ -347,7 +366,7 @@ func (i *Interpreter) checkNumberOperand(operator token.Token, operand interface
 	if _, ok := operand.(float64); ok {
 		return
 	}
-	panic(errors.NewRuntimeError(operator, "Operand must be a number."))
+	panic(loxError.NewRuntimeError(operator, fmt.Sprintf("[Line %d]: ", operator.Line), "Operand must be a number."))
 }
 
 func (i *Interpreter) checkNumberOperands(operator token.Token, left interface{}, right interface{}) {
@@ -356,7 +375,7 @@ func (i *Interpreter) checkNumberOperands(operator token.Token, left interface{}
 			return
 		}
 	}
-	panic(errors.NewRuntimeError(operator, "Operands must be two numbers."))
+	panic(loxError.NewRuntimeError(operator, fmt.Sprintf("[Line %d]: ", operator.Line), "Operands must be two numbers."))
 }
 
 func (i *Interpreter) isTruthy(object interface{}) bool {
@@ -394,8 +413,9 @@ func (i *Interpreter) stringify(object interface{}) string {
 	return fmt.Sprintf("%v", object)
 }
 
+/*
 // reportRuntimeError handles runtime error reporting
-func (i *Interpreter) reportRuntimeError(err *errors.RuntimeError) {
+func (i *Interpreter) reportRuntimeError(err *loxError.RuntimeError) {
 	fmt.Printf("[line %d] RuntimeError: %s\n", err.Token.Line, err.Message)
-	errors.HadRuntimeError = true
-}
+	loxError.HadRuntimeError = true
+}*/

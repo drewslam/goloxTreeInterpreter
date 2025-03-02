@@ -1,9 +1,11 @@
 package resolver
 
 import (
+	"fmt"
+
 	"github.com/drewslam/goloxTreeInterpreter/ast"
-	"github.com/drewslam/goloxTreeInterpreter/errors"
 	"github.com/drewslam/goloxTreeInterpreter/interpreter"
+	"github.com/drewslam/goloxTreeInterpreter/loxError"
 	"github.com/drewslam/goloxTreeInterpreter/token"
 )
 
@@ -108,12 +110,12 @@ func (r *Resolver) VisitPrintStmt(stmt *ast.Print) interface{} {
 
 func (r *Resolver) VisitReturnStmt(stmt *ast.Return) interface{} {
 	if r.CurrentFunction == NOT_FUNCTION {
-		errors.NewRuntimeError(stmt.Keyword, "Can't return from top level code.'")
+		return loxError.NewRuntimeError(stmt.Keyword, fmt.Sprintf("[Line %d]: ", stmt.Keyword.Line), "Can't return from top level code.'")
 	}
 
 	if stmt.Value != nil {
 		if r.CurrentFunction == INITIALIZER {
-			errors.NewRuntimeError(stmt.Keyword, "Can't return a value from an initializer.")
+			return loxError.NewRuntimeError(stmt.Keyword, fmt.Sprintf("[Line %d]: ", stmt.Keyword.Line), "Can't return a value from an initializer.")
 		}
 
 		r.resolve(stmt.Value)
@@ -154,16 +156,18 @@ func (r *Resolver) endScope() {
 	r.scopes = r.scopes[:len(r.scopes)-1]
 }
 
-func (r *Resolver) declare(name token.Token) {
+func (r *Resolver) declare(name token.Token) *loxError.LoxError {
 	if len(r.scopes) == 0 {
-		return
+		return nil
 	}
 
 	if scope, ok := peek(r.scopes); ok {
 		scope[name.Lexeme] = false
 	} else {
-		errors.NewRuntimeError(name, "Already a variable with this name in this scope.")
+		return loxError.NewRuntimeError(name, fmt.Sprintf("[Line %d]: ", name.Line), "Already a variable with this name in this scope.")
 	}
+
+	return nil
 }
 
 func (r *Resolver) define(name token.Token) {
@@ -249,7 +253,7 @@ func (r *Resolver) VisitSetExpr(expr *ast.Set) interface{} {
 
 func (r *Resolver) VisitThisExpr(expr *ast.This) interface{} {
 	if currentClass == NOT_CLASS {
-		return errors.NewRuntimeError(expr.Keyword, "Can't use 'this' outside of a class.")
+		return loxError.NewRuntimeError(expr.Keyword, fmt.Sprintf("[Line %d]: ", expr.Keyword.Line), "Can't use 'this' outside of a class.")
 	}
 
 	r.resolveLocal(expr, expr.Keyword)
@@ -266,8 +270,7 @@ func (r *Resolver) VisitVariableExpr(expr *ast.Variable) interface{} {
 		if scope, ok := peek(r.scopes); ok {
 			if defined, exists := scope[expr.Name.Lexeme]; exists {
 				if !defined {
-					errors.ReportParseError(expr.Name, "Can't read local variable in its own initializer.")
-					return nil
+					return loxError.NewParseError(expr.Name, "Can't read local variable in its own initializer.")
 				}
 			}
 		}

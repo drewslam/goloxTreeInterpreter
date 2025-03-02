@@ -1,4 +1,4 @@
-package errors
+package loxError
 
 import (
 	"fmt"
@@ -40,6 +40,16 @@ func NewRuntimeError(token token.Token, where string, message string) *LoxError 
 		Where:   where,
 		Message: message,
 		IsFatal: true,
+	}
+}
+
+// NewScanError creates a scan error (non-fatal)
+func NewScanError(line int, message string) *LoxError {
+	return &LoxError{
+		Line:    line,
+		Where:   "",
+		Message: message,
+		IsFatal: false,
 	}
 }
 

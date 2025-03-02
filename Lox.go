@@ -2,11 +2,12 @@ package main
 
 import (
 	"bufio"
+	"errors"
 	"fmt"
 	"os"
 
-	"github.com/drewslam/goloxTreeInterpreter/errors"
 	"github.com/drewslam/goloxTreeInterpreter/interpreter"
+	"github.com/drewslam/goloxTreeInterpreter/loxError"
 	"github.com/drewslam/goloxTreeInterpreter/parser"
 	"github.com/drewslam/goloxTreeInterpreter/resolver"
 	"github.com/drewslam/goloxTreeInterpreter/scanner"
@@ -37,14 +38,14 @@ func (l *Lox) runPrompt() {
 		fmt.Print("> ")
 		line, err := reader.ReadString('\n')
 		if err != nil {
-			fmt.Errorf("Error reading input: ", err)
+			fmt.Fprintf(os.Stderr, "Error reading input: ", err)
 			return
 		}
 		if line == "\n" {
 			continue
 		}
 		if err := l.run(line); err != nil {
-			fmt.Errorf("Error executing line: %v\n", err)
+			fmt.Fprintf(os.Stderr, "Error executing line: %v\n", err)
 		}
 	}
 }
@@ -53,13 +54,13 @@ func (l *Lox) run(source string) error {
 	scanner := scanner.NewScanner(source)
 	tokens, err := scanner.ScanTokens()
 	if err != nil {
-		return nil
+		return err
 	}
 
 	parser := parser.NewParser(tokens)
 	statements, err := parser.Parse()
 	if err != nil {
-		return nil
+		return err
 	}
 
 	resolver := &resolver.Resolver{
@@ -83,7 +84,7 @@ func main() {
 			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 
 			// Determine exit code based on error type
-			var loxErr *errors.LoxError
+			var loxErr *loxError.LoxError
 			if errors.As(err, &loxErr) && loxErr.IsFatal {
 				os.Exit(70) // Runtime error
 			} else {

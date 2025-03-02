@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/drewslam/goloxTreeInterpreter/errors"
+	"github.com/drewslam/goloxTreeInterpreter/loxError"
 	"github.com/drewslam/goloxTreeInterpreter/token"
 )
 
@@ -137,12 +137,7 @@ func (s *Scanner) scanToken() error {
 		} else if s.isAlpha(c) {
 			s.identifier()
 		} else {
-			errToken := token.Token{
-				Type:   token.IDENTIFIER,
-				Lexeme: string(c),
-				Line:   s.Line,
-			}
-			return errors.NewParseError(errToken, fmt.Sprintf("Unexpected character: %c", c))
+			return loxError.NewScanError(s.Line, fmt.Sprintf("Unexpected character: %c", c))
 		}
 	}
 
@@ -163,7 +158,7 @@ func (s *Scanner) identifier() {
 	s.addToken(tokenType, nil)
 }
 
-func (s *Scanner) number() {
+func (s *Scanner) number() *loxError.LoxError {
 	for s.isDigit(s.peek()) {
 		s.advance()
 	}
@@ -181,13 +176,14 @@ func (s *Scanner) number() {
 	numStr := s.Source[s.Start:s.Current]
 	num, err := strconv.ParseFloat(numStr, 64)
 	if err != nil {
-		errors.ReportError(s.Line, "Invalid number.")
-		return
+		return loxError.NewScanError(s.Line, "Invalid number.")
+
 	}
 	s.addToken(token.NUMBER, num)
+	return nil
 }
 
-func (s *Scanner) string() *errors.LoxError {
+func (s *Scanner) string() *loxError.LoxError {
 	for !s.isAtEnd() && s.peek() != '"' {
 		if s.peek() == '\n' {
 			s.Line++
@@ -196,7 +192,7 @@ func (s *Scanner) string() *errors.LoxError {
 	}
 
 	if s.isAtEnd() {
-		return errors.NewParseError(s.Line, "Unterminated string.")
+		return loxError.NewScanError(s.Line, "Unterminated string.")
 	}
 
 	// The closing "
@@ -205,7 +201,7 @@ func (s *Scanner) string() *errors.LoxError {
 	// Trim the surrounding quotes.
 	value := s.Source[s.Start+1 : s.Current-1]
 	s.addToken(token.STRING, value)
-
+	return nil
 }
 
 func (s *Scanner) match(expected byte) bool {
