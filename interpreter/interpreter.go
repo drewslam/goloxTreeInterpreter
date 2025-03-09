@@ -90,7 +90,11 @@ func (i *Interpreter) ExecuteBlock(statements []ast.Stmt, environment *environme
 var _ loxCallable.Interpreter = &Interpreter{}
 
 func (i *Interpreter) VisitBlockStmt(stmt *ast.Block) interface{} {
-	return i.ExecuteBlock(stmt.Statements, environment.NewEnvironment(i.environment))
+	err := i.ExecuteBlock(stmt.Statements, environment.NewEnvironment(i.environment))
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func (i *Interpreter) VisitClassStmt(stmt *ast.Class) interface{} {
@@ -98,11 +102,7 @@ func (i *Interpreter) VisitClassStmt(stmt *ast.Class) interface{} {
 
 	methods := make(map[string]*object.LoxFunction)
 	for _, method := range stmt.Methods {
-		function := &object.LoxFunction{
-			Declaration:   method,
-			Closure:       i.environment,
-			IsInitializer: method.Name.Lexeme == "init",
-		}
+		function := object.NewLoxFunction(method, i.environment, method.Name.Lexeme == "init")
 		methods[method.Name.Lexeme] = function
 	}
 

@@ -38,7 +38,7 @@ func (l *Lox) runPrompt() {
 		fmt.Print("> ")
 		line, err := reader.ReadString('\n')
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error reading input: ", err)
+			fmt.Fprintf(os.Stderr, "Error reading input: %v\n", err)
 			return
 		}
 		if line == "\n" {
@@ -63,10 +63,7 @@ func (l *Lox) run(source string) error {
 		return err
 	}
 
-	resolver := &resolver.Resolver{
-		Interpreter:     l.interpreter,
-		CurrentFunction: resolver.NOT_FUNCTION,
-	}
+	resolver := resolver.NewResolver(l.interpreter)
 	resolver.Resolve(statements)
 
 	l.interpreter.Interpret(statements)

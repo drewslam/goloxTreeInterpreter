@@ -31,6 +31,14 @@ const (
 	METHOD
 )
 
+func NewResolver(interpreter *interpreter.Interpreter) *Resolver {
+	return &Resolver{
+		Interpreter:     interpreter,
+		scopes:          make([]map[string]bool, 0),
+		CurrentFunction: NOT_FUNCTION,
+	}
+}
+
 type ClassType int
 
 const (
@@ -43,10 +51,11 @@ var currentClass ClassType = NOT_CLASS
 var _ ast.StmtVisitor = (*Resolver)(nil)
 var _ ast.ExprVisitor = (*Resolver)(nil)
 
-func (r *Resolver) Resolve(statements []ast.Stmt) {
+func (r *Resolver) Resolve(statements []ast.Stmt) error {
 	for _, statement := range statements {
 		r.resolve(statement)
 	}
+	return nil
 }
 
 func (r *Resolver) VisitBlockStmt(stmt *ast.Block) interface{} {
@@ -153,7 +162,9 @@ func (r *Resolver) beginScope() {
 }
 
 func (r *Resolver) endScope() {
-	r.scopes = r.scopes[:len(r.scopes)-1]
+	if len(r.scopes) > 0 {
+		r.scopes = r.scopes[:len(r.scopes)-1]
+	}
 }
 
 func (r *Resolver) declare(name token.Token) *loxError.LoxError {
@@ -182,6 +193,9 @@ func (r *Resolver) define(name token.Token) {
 }
 
 func (r *Resolver) resolveLocal(expr ast.Expr, name token.Token) {
+	if len(r.scopes) == 0 {
+		panic("No active scope when resolving a variable.")
+	}
 	for i := len(r.scopes) - 1; i >= 0; i-- {
 		if _, ok := r.scopes[i][name.Lexeme]; ok {
 			r.Interpreter.Resolve(expr, len(r.scopes)-1-i)
@@ -274,6 +288,8 @@ func (r *Resolver) VisitVariableExpr(expr *ast.Variable) interface{} {
 				}
 			}
 		}
+	} else {
+		panic("No active scope when resolving a variable.")
 	}
 
 	r.resolveLocal(expr, expr.Name)

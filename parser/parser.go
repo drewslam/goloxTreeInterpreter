@@ -90,7 +90,7 @@ func (p *Parser) statement() (ast.Stmt, *loxError.LoxError) {
 		if err != nil {
 			return nil, err
 		}
-		return &ast.Block{Statements: block}, nil
+		return ast.NewBlockStmt(block), nil
 	}
 
 	return p.expressionStatement()
@@ -333,6 +333,9 @@ func (p *Parser) assignment() (ast.Expr, *loxError.LoxError) {
 
 		if variable, ok := expr.(*ast.Variable); ok {
 			name := variable.Name
+			if name.Lexeme == "this" {
+				return nil, loxError.NewParseError(name, "Cannot assign to 'this'.")
+			}
 			return &ast.Assign{
 				Name:  name,
 				Value: value,
@@ -423,7 +426,7 @@ func (p *Parser) term() ast.Expr {
 
 	for p.match(token.MINUS, token.PLUS) {
 		operator := p.previous()
-		if right, err := p.factor(); err != nil {
+		if right, err := p.factor(); err == nil {
 			expr = &ast.Binary{
 				Left:     expr,
 				Operator: operator,
@@ -439,7 +442,7 @@ func (p *Parser) factor() (ast.Expr, *loxError.LoxError) {
 	if err != nil {
 		for p.match(token.SLASH, token.STAR) {
 			operator := p.previous()
-			if right, err := p.unary(); err != nil {
+			if right, err := p.unary(); err == nil {
 				expr = &ast.Binary{
 					Left:     expr,
 					Operator: operator,
@@ -455,7 +458,7 @@ func (p *Parser) factor() (ast.Expr, *loxError.LoxError) {
 func (p *Parser) unary() (ast.Expr, error) {
 	if p.match(token.BANG, token.MINUS) {
 		operator := p.previous()
-		if right, err := p.unary(); err != nil {
+		if right, err := p.unary(); err == nil {
 			return &ast.Unary{
 				Operator: operator,
 				Right:    right,
@@ -504,7 +507,7 @@ func (p *Parser) call() (ast.Expr, error) {
 
 	for {
 		if p.match(token.LEFT_PAREN) {
-			if val, err := p.finishCall(expr); err != nil {
+			if val, err := p.finishCall(expr); err == nil {
 				expr = val
 			} else {
 				return nil, err
@@ -617,7 +620,7 @@ func (p *Parser) consume(tokentype token.TokenType, message string) token.Token 
 
 	err := loxError.NewParseError(p.peek(), message)
 	if err != nil {
-
+		panic(err)
 	}
 	p.synchronize()
 
