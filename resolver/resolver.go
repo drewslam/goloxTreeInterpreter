@@ -133,6 +133,10 @@ func (r *Resolver) VisitReturnStmt(stmt *ast.Return) interface{} {
 }
 
 func (r *Resolver) resolve(input interface{}) {
+	if len(r.scopes) == 0 {
+		r.beginScope()
+	}
+
 	switch v := input.(type) {
 	case ast.Stmt:
 		v.Accept(r)
@@ -158,6 +162,10 @@ func (r *Resolver) resolveFunction(function *ast.Function, functiontype Function
 }
 
 func (r *Resolver) beginScope() {
+	if r.scopes == nil {
+		r.scopes = []map[string]bool{}
+	}
+
 	r.scopes = append(r.scopes, make(map[string]bool))
 }
 
@@ -194,7 +202,8 @@ func (r *Resolver) define(name token.Token) {
 
 func (r *Resolver) resolveLocal(expr ast.Expr, name token.Token) {
 	if len(r.scopes) == 0 {
-		panic("No active scope when resolving a variable.")
+		// panic("No active scope when resolving a variable.")
+		return
 	}
 	for i := len(r.scopes) - 1; i >= 0; i-- {
 		if _, ok := r.scopes[i][name.Lexeme]; ok {
@@ -280,6 +289,8 @@ func (r *Resolver) VisitUnaryExpr(expr *ast.Unary) interface{} {
 }
 
 func (r *Resolver) VisitVariableExpr(expr *ast.Variable) interface{} {
+	fmt.Println("Current scopes:", r.scopes)
+
 	if len(r.scopes) > 0 {
 		if scope, ok := peek(r.scopes); ok {
 			if defined, exists := scope[expr.Name.Lexeme]; exists {

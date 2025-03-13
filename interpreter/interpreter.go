@@ -28,6 +28,7 @@ func NewInterpreter() *Interpreter {
 	return &Interpreter{
 		Globals:     globalEnv,
 		environment: globalEnv,
+		locals:      make(map[ast.Expr]int),
 	}
 }
 
@@ -60,6 +61,9 @@ func (i *Interpreter) execute(stmt ast.Stmt) interface{} {
 }
 
 func (i *Interpreter) Resolve(expr ast.Expr, depth int) {
+	if i.locals == nil {
+		panic("Interpreter.locals is nil!")
+	}
 	i.locals[expr] = depth
 }
 
