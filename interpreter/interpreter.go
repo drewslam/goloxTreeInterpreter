@@ -32,7 +32,11 @@ func NewInterpreter() *Interpreter {
 	}
 }
 
-func (i *Interpreter) Interpret(statements []ast.Stmt) interface{} {
+func (i *Interpreter) StoreResolution(expr ast.Expr, depth int) {
+	i.locals[expr] = depth
+}
+
+func (i *Interpreter) Interpret(statements []ast.Stmt) {
 	defer func() {
 		if r := recover(); r != nil {
 			switch v := r.(type) {
@@ -41,7 +45,9 @@ func (i *Interpreter) Interpret(statements []ast.Stmt) interface{} {
 					loxError.ReportError(v)
 				}
 			case *returnValue.ReturnValue:
-				fmt.Println(v.Value)
+				if v.Value != nil {
+					fmt.Println(v.Value)
+				}
 			default:
 				panic(r) // Re-panic if it's not a RuntimeError
 			}
@@ -49,15 +55,20 @@ func (i *Interpreter) Interpret(statements []ast.Stmt) interface{} {
 	}()
 
 	for _, stmt := range statements {
-		if err := i.execute(stmt); err != nil {
+		/*if err := i.execute(stmt); err != nil {
 			panic(err)
+		}*/
+		result := i.execute(stmt)
+		if result != nil {
+			fmt.Println(result)
 		}
 	}
-	return nil
 }
 
 func (i *Interpreter) execute(stmt ast.Stmt) interface{} {
-	return stmt.Accept(i)
+	result := stmt.Accept(i)
+	fmt.Printf("Executing: %T -> result: %v\n", stmt, result)
+	return result
 }
 
 func (i *Interpreter) Resolve(expr ast.Expr, depth int) {
@@ -352,18 +363,24 @@ func (i *Interpreter) lookUpVariable(name token.Token, expr ast.Expr) interface{
 	distance, exists := i.locals[expr]
 
 	if exists {
+		fmt.Printf("Looking up local variable '%s' at distance %d\n", name.Lexeme, distance)
 		res, err := i.environment.GetAt(distance, name.Lexeme)
 		if err != nil {
-			return err
+			fmt.Printf("Error retrieving local variable '%s': %v\n", name.Lexeme, err)
+			return nil
 		}
-		return res
-	} else {
-		res, err := i.Globals.Get(name)
-		if err != nil {
-			return err
-		}
+		fmt.Printf("Local variable '%s' resolved to: %v\n", name.Lexeme, res)
 		return res
 	}
+
+	fmt.Printf("Variable '%s' not found locally. Checking globals\n", name.Lexeme)
+	res, err := i.Globals.Get(name)
+	if err != nil {
+		fmt.Printf("Error retrieving global variable '%s': %v\n", name.Lexeme, err)
+		return nil
+	}
+	fmt.Printf("Global variable '%s' resolved to: %v\n", name.Lexeme, res)
+	return res
 }
 
 func (i *Interpreter) checkNumberOperand(operator token.Token, operand interface{}) {

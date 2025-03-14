@@ -201,16 +201,23 @@ func (r *Resolver) define(name token.Token) {
 }
 
 func (r *Resolver) resolveLocal(expr ast.Expr, name token.Token) {
-	if len(r.scopes) == 0 {
+	/*if len(r.scopes) == 0 {
 		// panic("No active scope when resolving a variable.")
 		return
-	}
+	}*/
 	for i := len(r.scopes) - 1; i >= 0; i-- {
 		if _, ok := r.scopes[i][name.Lexeme]; ok {
-			r.Interpreter.Resolve(expr, len(r.scopes)-1-i)
+			depth := len(r.scopes) - 1 - i
+			if i == 0 {
+				fmt.Printf("Variable '%s' correctly marked as global\n", name.Lexeme)
+			}
+			fmt.Printf("Resolving variable '%s' as local at depth %d\n", name.Lexeme, depth)
+			//r.Interpreter.Resolve(expr, depth)
+			r.Interpreter.StoreResolution(expr, depth)
 			return
 		}
 	}
+	fmt.Printf("Variable '%s' is treated as global\n", name.Lexeme)
 }
 
 func (r *Resolver) VisitVarStmt(stmt *ast.Var) interface{} {

@@ -69,16 +69,22 @@ func (e *Environment) Ancestor(distance int) (*Environment, error) {
 }
 
 func (e *Environment) GetAt(distance int, name string) (interface{}, error) {
+	fmt.Printf("Attempting to get '%s' at distance %d\n", name, distance)
+
 	ancestor, err := e.Ancestor(distance)
 	if err != nil {
+		fmt.Printf("Error retrieving ancestor at distance %d: %v\n", distance, err)
 		return nil, err
 	}
+	fmt.Printf("Retrieved ancestor environment: %+v\n", ancestor.Values)
 
 	value, exists := ancestor.Values[name]
 	if !exists {
+		fmt.Printf("Variable '%s' not found in ancestor environment at distance %d\n", name, distance)
 		return nil, fmt.Errorf("Undefined variable '%s'", name)
 	}
 
+	fmt.Printf("Variable '%s' found at distance %d: %v\n", name, distance, value)
 	return value, nil
 }
 
