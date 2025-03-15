@@ -6,7 +6,7 @@ import (
 )
 
 type Interpreter interface {
-	ExecuteBlock(statements []ast.Stmt, environment *environment.Environment) error
+	ExecuteBlock(statements []ast.Stmt, environment *environment.Environment) interface{}
 	GetGlobals() *environment.Environment
 }
 

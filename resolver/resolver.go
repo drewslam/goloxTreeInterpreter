@@ -212,8 +212,8 @@ func (r *Resolver) resolveLocal(expr ast.Expr, name token.Token) {
 				fmt.Printf("Variable '%s' correctly marked as global\n", name.Lexeme)
 			}
 			fmt.Printf("Resolving variable '%s' as local at depth %d\n", name.Lexeme, depth)
-			//r.Interpreter.Resolve(expr, depth)
-			r.Interpreter.StoreResolution(expr, depth)
+			r.Interpreter.Resolve(expr, depth)
+			// r.Interpreter.StoreResolution(expr, depth)
 			return
 		}
 	}

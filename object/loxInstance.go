@@ -17,7 +17,6 @@ func (l *LoxInstance) String() string {
 }
 
 func (l *LoxInstance) Get(name token.Token) interface{} {
-
 	if value, exists := l.Fields[name.Lexeme]; exists {
 		return value
 	}

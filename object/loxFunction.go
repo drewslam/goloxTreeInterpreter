@@ -24,14 +24,15 @@ func NewLoxFunction(declaration *ast.Function, closure *environment.Environment,
 }
 
 func (l *LoxFunction) Bind(instance *LoxInstance) *LoxFunction {
-	environment := &environment.Environment{
+	env := environment.NewEnvironment(l.Closure)
+	/*environment := &environment.Environment{
 		Enclosing: l.Closure,
 		Values:    make(map[string]interface{}),
-	}
-	environment.Define("this", instance)
+	}*/
+	env.Define("this", instance)
 	return &LoxFunction{
 		Declaration:   l.Declaration,
-		Closure:       environment,
+		Closure:       env,
 		IsInitializer: l.IsInitializer,
 	}
 }
@@ -45,42 +46,49 @@ func (l *LoxFunction) Arity() int {
 }
 
 func (l *LoxFunction) Call(interpreter loxCallable.Interpreter, arguments []interface{}) interface{} {
-	environment := environment.NewEnvironment(l.Closure)
-
 	// Ensure argument count matches parameter count
 	if len(arguments) != len(l.Declaration.Params) {
 		panic(fmt.Errorf("Expected %d arguments but got %d.", len(l.Declaration.Params), len(arguments)))
 	}
 
+	env := environment.NewEnvironment(l.Closure)
+
 	// Define function parameters in environment
 	for i, param := range l.Declaration.Params {
-		environment.Define(param.Lexeme, arguments[i])
+		env.Define(param.Lexeme, arguments[i])
 	}
 
-	// Try executing the function
-	defer func() {
-		if r := recover(); r != nil {
-			if rv, ok := r.(*returnValue.ReturnValue); ok {
-				// Set the result via the deferred function
-				if l.IsInitializer {
-					thisVal, _ := l.Closure.GetAt(0, "this")
-					panic(&returnValue.ReturnValue{Value: thisVal})
-				}
-				panic(rv) // Rethrow the return value to the caller
-			}
-			panic(r) // Re-panic other errors
-		}
-	}()
+	var result interface{} = nil
 
-	interpreter.ExecuteBlock(l.Declaration.Body, environment)
+	// Try executing the function
+	func() {
+		defer func() {
+			if r := recover(); r != nil {
+				if rv, ok := r.(*returnValue.ReturnValue); ok {
+					fmt.Println("Recovered return value:", rv.Value)
+					result = rv.Value
+					fmt.Println("Stored returnVal in Call():", result)
+					// return
+				} else {
+					fmt.Println("Recovered unknown panic:", r)
+					panic(r) // Re-panic other errors
+				}
+			}
+		}()
+
+		fmt.Println("Executing function body for:", l.String())
+		interpreter.ExecuteBlock(l.Declaration.Body, env)
+	}()
 
 	// Ensure constructors return 'this'
 	if l.IsInitializer {
 		val, _ := l.Closure.GetAt(0, "this")
+		fmt.Println("Returning 'this' from Call()")
 		return val
 	}
 
-	return nil
+	fmt.Println("Returning from Call():", result)
+	return result
 }
 
 var _ loxCallable.LoxCallable = (*LoxFunction)(nil)
