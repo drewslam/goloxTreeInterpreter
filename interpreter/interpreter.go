@@ -6,6 +6,7 @@ import (
 	"github.com/drewslam/goloxTreeInterpreter/ast"
 	"github.com/drewslam/goloxTreeInterpreter/environment"
 	"github.com/drewslam/goloxTreeInterpreter/loxCallable"
+	"github.com/drewslam/goloxTreeInterpreter/loxDebug"
 	"github.com/drewslam/goloxTreeInterpreter/loxError"
 	"github.com/drewslam/goloxTreeInterpreter/object"
 	"github.com/drewslam/goloxTreeInterpreter/returnValue"
@@ -59,16 +60,16 @@ func (i *Interpreter) Interpret(statements []ast.Stmt) {
 			panic(err)
 		}*/
 		result := i.execute(stmt)
-		fmt.Printf("Environment after executing %T: %+v\n", stmt, i.environment.Values)
+		loxDebug.LogInfo("Environment after executing %T: %+v\n", stmt, i.environment.Values)
 		if result != nil {
-			fmt.Printf("Executiong returned unexpected value: %v\n", result)
+			loxDebug.LogDebug("Executiong returned unexpected value: %v\n", result)
 		}
 	}
 }
 
 func (i *Interpreter) execute(stmt ast.Stmt) interface{} {
 	result := stmt.Accept(i)
-	fmt.Printf("Executing: %T -> result: %v\n", stmt, result)
+	loxDebug.LogDebug("Executing: %T -> result: %v\n", stmt, result)
 	return result
 }
 
@@ -148,7 +149,7 @@ func (i *Interpreter) evaluate(expr ast.Expr) interface{} {
 		loxError.ReportAndPanic(err)
 	}
 
-	fmt.Printf("Evaluating expression: %T\n", expr)
+	loxDebug.LogInfo("Evaluating expression: %T\n", expr)
 
 	defer func() {
 		if r := recover(); r != nil {
@@ -159,7 +160,7 @@ func (i *Interpreter) evaluate(expr ast.Expr) interface{} {
 	}()
 
 	result := expr.Accept(i)
-	fmt.Printf("Expression result: %v (type: %T)\n", result, result)
+	loxDebug.LogInfo("Expression result: %v (type: %T)\n", result, result)
 	return result
 }
 
@@ -185,7 +186,7 @@ func (i *Interpreter) VisitIfStmt(stmt *ast.If) interface{} {
 
 func (i *Interpreter) VisitPrintStmt(stmt *ast.Print) interface{} {
 	value := i.evaluate(stmt.Expr)
-	fmt.Printf("Printing value: %v\n", value)
+	loxDebug.LogInfo("Printing value: %v\n", value)
 	fmt.Println(i.stringify(value))
 	return nil
 }
@@ -195,7 +196,7 @@ func (i *Interpreter) VisitReturnStmt(stmt *ast.Return) interface{} {
 	if stmt.Value != nil {
 		value = i.evaluate(stmt.Value)
 	}
-	fmt.Println("Panic with return value:", value)
+	loxDebug.LogDebug("Panic with return value:", value)
 	panic(&returnValue.ReturnValue{Value: value})
 }
 
@@ -205,7 +206,7 @@ func (i *Interpreter) VisitVarStmt(stmt *ast.Var) interface{} {
 		value = i.evaluate(stmt.Initializer)
 	}
 
-	fmt.Printf("Storing variable '%s' with value: %v (type: %T)\n", stmt.Name.Lexeme, value, value)
+	loxDebug.LogInfo("Storing variable '%s' with value: %v (type: %T)\n", stmt.Name.Lexeme, value, value)
 	i.environment.Define(stmt.Name.Lexeme, value)
 	return nil
 }
@@ -285,12 +286,12 @@ func (i *Interpreter) VisitBinaryExpr(expr *ast.Binary) interface{} {
 func (i *Interpreter) VisitCallExpr(expr *ast.Call) interface{} {
 	callee := i.evaluate(expr.Callee)
 
-	fmt.Printf("Calling function: %v (type: %T)\n", callee, callee)
+	loxDebug.LogInfo("Calling function: %v (type: %T)\n", callee, callee)
 
 	var arguments []interface{}
 	for _, argument := range expr.Arguments {
 		evaluatedArg := i.evaluate(argument)
-		fmt.Printf("Evaluated arguments: %v (type: %T)\n", evaluatedArg, evaluatedArg)
+		loxDebug.LogDebug("Evaluated arguments: %v (type: %T)\n", evaluatedArg, evaluatedArg)
 		arguments = append(arguments, evaluatedArg)
 	}
 
@@ -307,7 +308,7 @@ func (i *Interpreter) VisitCallExpr(expr *ast.Call) interface{} {
 	}
 
 	result := function.Call(i, arguments)
-	fmt.Printf("Function returned: %v (type: %T)\n", result, result)
+	loxDebug.LogDebug("Function returned: %v (type: %T)\n", result, result)
 	return result
 }
 
@@ -405,26 +406,26 @@ func (i *Interpreter) lookUpVariable(name token.Token, expr ast.Expr) interface{
 	}
 
 	if exists {
-		fmt.Printf("Looking up local variable '%s' at distance %d\n", name.Lexeme, distance)
+		loxDebug.LogInfo("Looking up local variable '%s' at distance %d\n", name.Lexeme, distance)
 		res, err := i.environment.GetAt(distance, name.Lexeme)
 		if err != nil {
-			fmt.Printf("Error retrieving local variable '%s': %v\n", name.Lexeme, err)
+			loxDebug.LogError("Error retrieving local variable '%s': %v\n", name.Lexeme, err)
 			err := loxError.NewRuntimeError(name, fmt.Sprintf("%d", name.Line), "Undefined local variable '"+name.Lexeme+"'")
 			loxError.ReportAndPanic(err)
 		}
-		fmt.Printf("Local variable '%s' resolved to: %v\n", name.Lexeme, res)
+		loxDebug.LogDebug("Local variable '%s' resolved to: %v\n", name.Lexeme, res)
 		return res
 	}
 
 	// Fallback to globals
-	fmt.Printf("Variable '%s' not found locally. Checking globals\n", name.Lexeme)
+	loxDebug.LogDebug("Variable '%s' not found locally. Checking globals\n", name.Lexeme)
 	res, err := i.Globals.Get(name)
 	if err != nil {
-		fmt.Printf("Error retrieving global variable '%s': %v\n", name.Lexeme, err)
+		loxDebug.LogError("Error retrieving global variable '%s': %v\n", name.Lexeme, err)
 		err := loxError.NewRuntimeError(name, fmt.Sprintf("%d", name.Line), "Undefined ariable '"+name.Lexeme+"'")
 		loxError.ReportAndPanic(err)
 	}
-	fmt.Printf("Global variable '%s' resolved to: %v\n", name.Lexeme, res)
+	loxDebug.LogDebug("Global variable '%s' resolved to: %v\n", name.Lexeme, res)
 	return res
 }
 
@@ -478,10 +479,3 @@ func (i *Interpreter) stringify(object interface{}) string {
 
 	return fmt.Sprintf("%v", object)
 }
-
-/*
-// reportRuntimeError handles runtime error reporting
-func (i *Interpreter) reportRuntimeError(err *loxError.RuntimeError) {
-	fmt.Printf("[line %d] RuntimeError: %s\n", err.Token.Line, err.Message)
-	loxError.HadRuntimeError = true
-}*/

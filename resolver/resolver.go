@@ -5,6 +5,7 @@ import (
 
 	"github.com/drewslam/goloxTreeInterpreter/ast"
 	"github.com/drewslam/goloxTreeInterpreter/interpreter"
+	"github.com/drewslam/goloxTreeInterpreter/loxDebug"
 	"github.com/drewslam/goloxTreeInterpreter/loxError"
 	"github.com/drewslam/goloxTreeInterpreter/token"
 )
@@ -209,15 +210,15 @@ func (r *Resolver) resolveLocal(expr ast.Expr, name token.Token) {
 		if _, ok := r.scopes[i][name.Lexeme]; ok {
 			depth := len(r.scopes) - 1 - i
 			if i == 0 {
-				fmt.Printf("Variable '%s' correctly marked as global\n", name.Lexeme)
+				loxDebug.LogInfo("Variable '%s' correctly marked as global\n", name.Lexeme)
 			}
-			fmt.Printf("Resolving variable '%s' as local at depth %d\n", name.Lexeme, depth)
+			loxDebug.LogInfo("Resolving variable '%s' as local at depth %d\n", name.Lexeme, depth)
 			r.Interpreter.Resolve(expr, depth)
 			// r.Interpreter.StoreResolution(expr, depth)
 			return
 		}
 	}
-	fmt.Printf("Variable '%s' is treated as global\n", name.Lexeme)
+	loxDebug.LogInfo("Variable '%s' is treated as global\n", name.Lexeme)
 }
 
 func (r *Resolver) VisitVarStmt(stmt *ast.Var) interface{} {
@@ -296,7 +297,7 @@ func (r *Resolver) VisitUnaryExpr(expr *ast.Unary) interface{} {
 }
 
 func (r *Resolver) VisitVariableExpr(expr *ast.Variable) interface{} {
-	fmt.Println("Current scopes:", r.scopes)
+	loxDebug.LogDebug("Current scopes:", r.scopes)
 
 	if len(r.scopes) > 0 {
 		if scope, ok := peek(r.scopes); ok {

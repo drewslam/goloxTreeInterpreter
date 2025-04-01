@@ -7,6 +7,7 @@ import (
 	"os"
 
 	"github.com/drewslam/goloxTreeInterpreter/interpreter"
+	"github.com/drewslam/goloxTreeInterpreter/loxDebug"
 	"github.com/drewslam/goloxTreeInterpreter/loxError"
 	"github.com/drewslam/goloxTreeInterpreter/parser"
 	"github.com/drewslam/goloxTreeInterpreter/resolver"
@@ -64,13 +65,19 @@ func (l *Lox) run(source string) error {
 	}
 
 	resolver := resolver.NewResolver(l.interpreter)
-	resolver.Resolve(statements)
+	err = resolver.Resolve(statements)
+	if err != nil {
+		return err
+	}
 
 	l.interpreter.Interpret(statements)
 	return nil
 }
 
 func main() {
+	loxDebug.InitializeLogger()
+	defer loxDebug.CloseLogger()
+
 	lox := NewLox()
 
 	switch len(os.Args) {
