@@ -42,7 +42,7 @@ func (i *Interpreter) Interpret(statements []ast.Stmt) {
 			switch v := r.(type) {
 			case *loxError.LoxError:
 				if v.IsFatal {
-					loxError.ReportError(v)
+					loxError.ReportAndPanic(v)
 				}
 			case *returnValue.ReturnValue:
 				if v.Value != nil {
@@ -144,7 +144,8 @@ func (i *Interpreter) VisitClassStmt(stmt *ast.Class) interface{} {
 
 func (i *Interpreter) evaluate(expr ast.Expr) interface{} {
 	if expr == nil {
-		panic(loxError.NewRuntimeError(token.Token{Line: 0}, "", "Tried to evaluate a nil expression."))
+		err := loxError.NewRuntimeError(token.Token{Line: 0}, "", "Tried to evaluate a nil expression.")
+		loxError.ReportAndPanic(err)
 	}
 
 	fmt.Printf("Evaluating expression: %T\n", expr)
@@ -152,7 +153,7 @@ func (i *Interpreter) evaluate(expr ast.Expr) interface{} {
 	defer func() {
 		if r := recover(); r != nil {
 			if err, ok := r.(*loxError.LoxError); ok && err.IsFatal {
-				panic(err)
+				loxError.ReportAndPanic(err)
 			}
 		}
 	}()
@@ -267,7 +268,8 @@ func (i *Interpreter) VisitBinaryExpr(expr *ast.Binary) interface{} {
 				return leftVal + rightVal
 			}
 		}
-		panic(loxError.NewRuntimeError(expr.Operator, fmt.Sprintf("[Line %d]: ", expr.Operator.Line), "Operands must be two numbers or two strings."))
+		err := loxError.NewRuntimeError(expr.Operator, fmt.Sprintf("[Line %d]: ", expr.Operator.Line), "Operands must be two numbers or two strings.")
+		loxError.ReportAndPanic(err)
 	case token.SLASH:
 		i.checkNumberOperands(expr.Operator, left, right)
 		return left.(float64) / right.(float64)
@@ -294,12 +296,14 @@ func (i *Interpreter) VisitCallExpr(expr *ast.Call) interface{} {
 
 	function, ok := callee.(loxCallable.LoxCallable)
 	if !ok {
-		panic(loxError.NewRuntimeError(expr.Paren, fmt.Sprintf("[Line %d]: ", expr.Paren.Line), "Can only call functions and classes."))
+		err := loxError.NewRuntimeError(expr.Paren, fmt.Sprintf("[Line %d]: ", expr.Paren.Line), "Can only call functions and classes.")
+		loxError.ReportAndPanic(err)
 	}
 
 	if len(arguments) != function.Arity() {
 		message := fmt.Sprintf("Expected %d arguments but got %d.", function.Arity(), len(arguments))
-		panic(loxError.NewRuntimeError(expr.Paren, fmt.Sprintf("[Line %d]: ", expr.Paren.Line), message))
+		err := loxError.NewRuntimeError(expr.Paren, fmt.Sprintf("[Line %d]: ", expr.Paren.Line), message)
+		loxError.ReportAndPanic(err)
 	}
 
 	result := function.Call(i, arguments)
@@ -380,24 +384,45 @@ func (i *Interpreter) VisitVariableExpr(expr *ast.Variable) interface{} {
 }
 
 func (i *Interpreter) lookUpVariable(name token.Token, expr ast.Expr) interface{} {
+	if i.environment != nil {
+		val, err := i.environment.Get(name)
+		if err == nil {
+			return val
+		}
+	}
+
 	distance, exists := i.locals[expr]
+
+	if !exists {
+		for lookupExpr, lookupDistance := range i.locals {
+			if varExpr, ok := lookupExpr.(*ast.Variable); ok &&
+				varExpr.Name.Lexeme == name.Lexeme {
+				distance = lookupDistance
+				exists = true
+				break
+			}
+		}
+	}
 
 	if exists {
 		fmt.Printf("Looking up local variable '%s' at distance %d\n", name.Lexeme, distance)
 		res, err := i.environment.GetAt(distance, name.Lexeme)
 		if err != nil {
 			fmt.Printf("Error retrieving local variable '%s': %v\n", name.Lexeme, err)
-			panic(loxError.NewRuntimeError(name, fmt.Sprintf("%d", name.Line), "Undefined local variable '"+name.Lexeme+"'"))
+			err := loxError.NewRuntimeError(name, fmt.Sprintf("%d", name.Line), "Undefined local variable '"+name.Lexeme+"'")
+			loxError.ReportAndPanic(err)
 		}
 		fmt.Printf("Local variable '%s' resolved to: %v\n", name.Lexeme, res)
 		return res
 	}
 
+	// Fallback to globals
 	fmt.Printf("Variable '%s' not found locally. Checking globals\n", name.Lexeme)
 	res, err := i.Globals.Get(name)
 	if err != nil {
 		fmt.Printf("Error retrieving global variable '%s': %v\n", name.Lexeme, err)
-		panic(loxError.NewRuntimeError(name, fmt.Sprintf("%d", name.Line), "Undefined ariable '"+name.Lexeme+"'"))
+		err := loxError.NewRuntimeError(name, fmt.Sprintf("%d", name.Line), "Undefined ariable '"+name.Lexeme+"'")
+		loxError.ReportAndPanic(err)
 	}
 	fmt.Printf("Global variable '%s' resolved to: %v\n", name.Lexeme, res)
 	return res

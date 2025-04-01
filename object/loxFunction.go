@@ -6,7 +6,9 @@ import (
 	"github.com/drewslam/goloxTreeInterpreter/ast"
 	"github.com/drewslam/goloxTreeInterpreter/environment"
 	"github.com/drewslam/goloxTreeInterpreter/loxCallable"
+	"github.com/drewslam/goloxTreeInterpreter/loxError"
 	"github.com/drewslam/goloxTreeInterpreter/returnValue"
+	"github.com/drewslam/goloxTreeInterpreter/token"
 )
 
 type LoxFunction struct {
@@ -48,7 +50,9 @@ func (l *LoxFunction) Arity() int {
 func (l *LoxFunction) Call(interpreter loxCallable.Interpreter, arguments []interface{}) interface{} {
 	// Ensure argument count matches parameter count
 	if len(arguments) != len(l.Declaration.Params) {
-		panic(fmt.Errorf("Expected %d arguments but got %d.", len(l.Declaration.Params), len(arguments)))
+		message := (fmt.Sprintf("Expected %d arguments but got %d.", len(l.Declaration.Params), len(arguments)))
+		err := loxError.NewRuntimeError(l.Declaration.Name, "", message)
+		loxError.ReportAndPanic(err)
 	}
 
 	env := environment.NewEnvironment(l.Closure)
@@ -56,6 +60,11 @@ func (l *LoxFunction) Call(interpreter loxCallable.Interpreter, arguments []inte
 	// Define function parameters in environment
 	for i, param := range l.Declaration.Params {
 		env.Define(param.Lexeme, arguments[i])
+	}
+
+	for _, param := range l.Declaration.Params {
+		val, err := env.Get(token.Token{Lexeme: param.Lexeme})
+		fmt.Printf("Parameter %s = %v (error %v)\n", param.Lexeme, val, err)
 	}
 
 	var result interface{} = nil
