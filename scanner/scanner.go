@@ -45,7 +45,7 @@ func NewScanner(source string) *Scanner {
 	}
 }
 
-func (s *Scanner) ScanTokens() ([]token.Token, error) {
+func (s *Scanner) ScanTokens() ([]token.Token, *loxError.LoxError) {
 	for !s.isAtEnd() {
 		s.Start = s.Current
 		if err := s.scanToken(); err != nil {
@@ -65,7 +65,7 @@ func (s *Scanner) isAtEnd() bool {
 	return s.Current >= len(s.Source)
 }
 
-func (s *Scanner) scanToken() error {
+func (s *Scanner) scanToken() *loxError.LoxError {
 	c := s.advance()
 	switch c {
 	case '(':

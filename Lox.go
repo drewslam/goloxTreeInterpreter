@@ -27,9 +27,13 @@ func NewLox() *Lox {
 func (l *Lox) runFile(path string) error {
 	bytes, err := os.ReadFile(path)
 	if err != nil {
-		return fmt.Errorf("Failed to read file: ", err)
+		return fmt.Errorf("Failed to read file: %v", err)
 	}
-	return l.run(string(bytes))
+	result := l.run(string(bytes))
+	if result == nil {
+		return nil
+	}
+	return result
 }
 
 func (l *Lox) runPrompt() {
@@ -51,7 +55,7 @@ func (l *Lox) runPrompt() {
 	}
 }
 
-func (l *Lox) run(source string) error {
+func (l *Lox) run(source string) *loxError.LoxError {
 	scanner := scanner.NewScanner(source)
 	tokens, err := scanner.ScanTokens()
 	if err != nil {
@@ -84,15 +88,20 @@ func main() {
 	case 1:
 		lox.runPrompt()
 	case 2:
-		if err := lox.runFile(os.Args[1]); err != nil {
+		err := lox.runFile(os.Args[1])
+		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 
 			// Determine exit code based on error type
 			var loxErr *loxError.LoxError
-			if errors.As(err, &loxErr) && loxErr.IsFatal {
-				os.Exit(70) // Runtime error
+			if errors.As(err, &loxErr) {
+				if loxErr.IsFatal {
+					os.Exit(70) // Runtime error
+				} else {
+					os.Exit(65) // Syntax error
+				}
 			} else {
-				os.Exit(65) // Syntax error
+				os.Exit(65)
 			}
 		}
 	default:

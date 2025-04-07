@@ -56,10 +56,19 @@ func (p *Parser) classDeclaration() (ast.Stmt, *loxError.LoxError) {
 
 	var methods []*ast.Function
 	for !p.check(token.RIGHT_BRACE) && !p.isAtEnd() {
+		if !p.check(token.IDENTIFIER) {
+			// err := loxError.NewParseError(p.peek(), "Only methods are allowed in class bodies.")
+			p.synchronize()
+			continue
+		}
+
 		method, err := p.function("method")
-		if err == nil {
+		if err != nil {
+			return nil, err
+		} else {
 			methods = append(methods, method)
 		}
+
 	}
 
 	p.consume(token.RIGHT_BRACE, "Expect '}' after class body.")
@@ -321,46 +330,66 @@ func (p *Parser) block() ([]ast.Stmt, *loxError.LoxError) {
 }
 
 func (p *Parser) assignment() (ast.Expr, *loxError.LoxError) {
-	expr := p.or()
-
+	expr, err := p.or()
+	if err != nil {
+		return nil, err
+	}
+	/*
+		if expr == nil {
+			loxDebug.LogError("Parsed a nil expression in assignment().")
+		}
+	*/
 	if p.match(token.EQUAL) {
 		equals := p.previous()
 		value, err := p.assignment()
 
 		if err != nil {
+			// p.synchronize()
 			return nil, err
 		}
 
-		if variable, ok := expr.(*ast.Variable); ok {
-			name := variable.Name
+		switch v := expr.(type) {
+		case *ast.Variable:
+			name := v.Name
 			if name.Lexeme == "this" {
+				// p.synchronize()
 				return nil, loxError.NewParseError(name, "Cannot assign to 'this'.")
 			}
 			return &ast.Assign{
 				Name:  name,
 				Value: value,
 			}, nil
-		}
-		if get, ok := expr.(*ast.Get); ok {
+		case *ast.Get:
 			return &ast.Set{
-				Object: get.Object,
-				Name:   get.Name,
+				Object: v.Object,
+				Name:   v.Name,
 				Value:  value,
 			}, nil
+		case *ast.This:
+			return nil, loxError.NewParseError(v.Keyword, "Cannot assign to 'this'.")
+		default:
+			return nil, loxError.NewParseError(equals, "Invalid assignment target.")
 		}
 
-		return nil, loxError.NewParseError(equals, "Invalid assignment target.")
+		// p.synchronize()
+		// return nil, loxError.NewParseError(equals, "Invalid assignment target.")
 	}
 
 	return expr, nil
 }
 
-func (p *Parser) or() ast.Expr {
-	expr := p.and()
+func (p *Parser) or() (ast.Expr, *loxError.LoxError) {
+	expr, err := p.and()
+	if err != nil {
+		return nil, err
+	}
 
 	for p.match(token.OR) {
 		operator := p.previous()
-		right := p.and()
+		right, err := p.and()
+		if err != nil {
+			return nil, err
+		}
 		expr = &ast.Logical{
 			Left:     expr,
 			Operator: operator,
@@ -368,15 +397,21 @@ func (p *Parser) or() ast.Expr {
 		}
 	}
 
-	return expr
+	return expr, nil
 }
 
-func (p *Parser) and() ast.Expr {
-	expr := p.equality()
+func (p *Parser) and() (ast.Expr, *loxError.LoxError) {
+	expr, err := p.equality()
+	if err != nil {
+		return nil, err
+	}
 
 	for p.match(token.AND) {
 		operator := p.previous()
-		right := p.equality()
+		right, err := p.equality()
+		if err != nil {
+			return nil, err
+		}
 		expr = &ast.Logical{
 			Left:     expr,
 			Operator: operator,
@@ -384,30 +419,42 @@ func (p *Parser) and() ast.Expr {
 		}
 	}
 
-	return expr
+	return expr, nil
 }
 
-func (p *Parser) equality() ast.Expr {
-	expr := p.comparison()
+func (p *Parser) equality() (ast.Expr, *loxError.LoxError) {
+	expr, err := p.comparison()
+	if err != nil {
+		return nil, err
+	}
 
 	for p.match(token.BANG_EQUAL, token.EQUAL_EQUAL) {
 		operator := p.previous()
-		right := p.comparison()
+		right, err := p.comparison()
+		if err != nil {
+			return nil, err
+		}
 		expr = &ast.Binary{
 			Left:     expr,
 			Operator: operator,
 			Right:    right,
 		}
 	}
-	return expr
+	return expr, nil
 }
 
-func (p *Parser) comparison() ast.Expr {
-	expr := p.term()
+func (p *Parser) comparison() (ast.Expr, *loxError.LoxError) {
+	expr, err := p.term()
+	if err != nil {
+		return nil, err
+	}
 
 	for p.match(token.GREATER, token.GREATER_EQUAL, token.LESS, token.LESS_EQUAL) {
 		operator := p.previous()
-		right := p.term()
+		right, err := p.term()
+		if err != nil {
+			return nil, err
+		}
 		expr = &ast.Binary{
 			Left:     expr,
 			Operator: operator,
@@ -415,55 +462,64 @@ func (p *Parser) comparison() ast.Expr {
 		}
 	}
 
-	return expr
+	return expr, nil
 }
 
-func (p *Parser) term() ast.Expr {
+func (p *Parser) term() (ast.Expr, *loxError.LoxError) {
 	expr, err := p.factor()
 	if err != nil {
-		return nil
+		return nil, err
 	}
 
 	for p.match(token.MINUS, token.PLUS) {
 		operator := p.previous()
-		if right, err := p.factor(); err == nil {
-			expr = &ast.Binary{
-				Left:     expr,
-				Operator: operator,
-				Right:    right,
-			}
+		right, err := p.factor()
+		if err != nil {
+			return nil, err
+		}
+		expr = &ast.Binary{
+			Left:     expr,
+			Operator: operator,
+			Right:    right,
 		}
 	}
-	return expr
+	return expr, nil
 }
 
 func (p *Parser) factor() (ast.Expr, *loxError.LoxError) {
 	expr, err := p.unary()
 	if err != nil {
-		for p.match(token.SLASH, token.STAR) {
-			operator := p.previous()
-			if right, err := p.unary(); err == nil {
-				expr = &ast.Binary{
-					Left:     expr,
-					Operator: operator,
-					Right:    right,
-				}
-			}
+		return nil, err
+	}
+
+	for p.match(token.SLASH, token.STAR) {
+		operator := p.previous()
+		right, err := p.unary()
+		if err != nil {
+			return nil, err
+		}
+
+		expr = &ast.Binary{
+			Left:     expr,
+			Operator: operator,
+			Right:    right,
 		}
 	}
 
 	return expr, nil
 }
 
-func (p *Parser) unary() (ast.Expr, error) {
+func (p *Parser) unary() (ast.Expr, *loxError.LoxError) {
 	if p.match(token.BANG, token.MINUS) {
 		operator := p.previous()
-		if right, err := p.unary(); err == nil {
-			return &ast.Unary{
-				Operator: operator,
-				Right:    right,
-			}, nil
+		right, err := p.unary()
+		if err != nil {
+			return nil, err
 		}
+		return &ast.Unary{
+			Operator: operator,
+			Right:    right,
+		}, nil
 	}
 
 	return p.call()
@@ -499,7 +555,7 @@ func (p *Parser) finishCall(callee ast.Expr) (ast.Expr, *loxError.LoxError) {
 	}, nil
 }
 
-func (p *Parser) call() (ast.Expr, error) {
+func (p *Parser) call() (ast.Expr, *loxError.LoxError) {
 	expr, err := p.primary()
 	if err != nil {
 		return nil, err
@@ -577,7 +633,10 @@ func (p *Parser) primary() (ast.Expr, *loxError.LoxError) {
 	return nil, loxError.NewParseError(p.peek(), "Expect expression.")
 }
 
-func (p *Parser) Parse() (statements []ast.Stmt, err error) {
+func (p *Parser) Parse() (statements []ast.Stmt, err *loxError.LoxError) {
+	// var statements []ast.Stmt
+	// var err *loxError.LoxError
+
 	defer func() {
 		if r := recover(); r != nil {
 			// Check if it's a parse error
@@ -594,13 +653,19 @@ func (p *Parser) Parse() (statements []ast.Stmt, err error) {
 		stmt, err := p.declaration()
 		if err != nil {
 			return nil, err
+			// p.synchronize()
+			// continue
 		}
 		if stmt != nil {
 			statements = append(statements, stmt)
 		}
 	}
-
-	return
+	/*
+		if err != nil {
+			return nil, err
+		}
+	*/
+	return // statements, nil
 }
 
 func (p *Parser) match(types ...token.TokenType) bool {
@@ -613,15 +678,16 @@ func (p *Parser) match(types ...token.TokenType) bool {
 	return false
 }
 
-func (p *Parser) consume(tokentype token.TokenType, message string) token.Token {
-	if p.check(tokentype) {
+func (p *Parser) consume(expected token.TokenType, message string) token.Token {
+	if p.check(expected) {
 		return p.advance()
 	}
 
 	err := loxError.NewParseError(p.peek(), message)
-	if err != nil {
-		panic(err)
-	}
+	// if err != nil {
+	//	panic(err)
+	// }
+	loxError.ReportError(err)
 	p.synchronize()
 
 	return token.Token{}
@@ -664,6 +730,9 @@ func (p *Parser) synchronize() {
 
 		switch p.peek().Type {
 		case token.CLASS, token.FUN, token.VAR, token.FOR, token.IF, token.WHILE, token.PRINT, token.RETURN:
+			return
+		case token.RIGHT_BRACE: // Recover at class/method boundaries
+			p.advance()
 			return
 		}
 

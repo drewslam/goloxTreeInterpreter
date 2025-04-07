@@ -52,7 +52,7 @@ var currentClass ClassType = NOT_CLASS
 var _ ast.StmtVisitor = (*Resolver)(nil)
 var _ ast.ExprVisitor = (*Resolver)(nil)
 
-func (r *Resolver) Resolve(statements []ast.Stmt) error {
+func (r *Resolver) Resolve(statements []ast.Stmt) *loxError.LoxError {
 	for _, statement := range statements {
 		r.resolve(statement)
 	}
@@ -238,6 +238,12 @@ func (r *Resolver) VisitWhileStmt(stmt *ast.While) interface{} {
 
 func (r *Resolver) VisitAssignExpr(expr *ast.Assign) interface{} {
 	r.resolve(expr.Value)
+
+	if expr.Name.Lexeme == "this" {
+		err := loxError.NewScanError(expr.Name.Line, "Invalid assignment target.")
+		loxError.ReportError(err)
+	}
+
 	r.resolveLocal(expr, expr.Name)
 	return nil
 }

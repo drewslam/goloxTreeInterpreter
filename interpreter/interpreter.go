@@ -170,6 +170,10 @@ func (i *Interpreter) VisitExpressionStmt(stmt *ast.Expression) interface{} {
 }
 
 func (i *Interpreter) VisitFunctionStmt(stmt *ast.Function) interface{} {
+	for k, v := range i.environment.Values {
+		loxDebug.LogDebug("Env before function define: %s = %v", k, v)
+	}
+
 	function := object.NewLoxFunction(stmt, i.environment, false)
 	i.environment.Define(stmt.Name.Lexeme, function)
 	return nil
@@ -422,7 +426,7 @@ func (i *Interpreter) lookUpVariable(name token.Token, expr ast.Expr) interface{
 	res, err := i.Globals.Get(name)
 	if err != nil {
 		loxDebug.LogError("Error retrieving global variable '%s': %v\n", name.Lexeme, err)
-		err := loxError.NewRuntimeError(name, fmt.Sprintf("%d", name.Line), "Undefined ariable '"+name.Lexeme+"'")
+		err := loxError.NewRuntimeError(name, fmt.Sprintf("%d", name.Line), "Undefined variable '"+name.Lexeme+"'")
 		loxError.ReportAndPanic(err)
 	}
 	loxDebug.LogDebug("Global variable '%s' resolved to: %v\n", name.Lexeme, res)
