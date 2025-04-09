@@ -1,6 +1,8 @@
 package ast
 
-import "github.com/drewslam/goloxTreeInterpreter/token"
+import (
+	"github.com/drewslam/goloxTreeInterpreter/token"
+)
 
 type Stmt interface {
 	Accept(visitor StmtVisitor) interface{}
@@ -36,8 +38,9 @@ func NewBlockStmt(statements []Stmt) *Block {
 
 // Class type
 type Class struct {
-	Name    token.Token
-	Methods []*Function
+	Name       token.Token
+	Superclass *Variable
+	Methods    []*Function
 }
 
 func (stmt *Class) Accept(visitor StmtVisitor) interface{} {
@@ -46,6 +49,14 @@ func (stmt *Class) Accept(visitor StmtVisitor) interface{} {
 	}
 
 	return visitor.VisitClassStmt(stmt)
+}
+
+func NewClassStmt(name token.Token, superclass *Variable, methods []*Function) *Class {
+	return &Class{
+		Name:       name,
+		Superclass: superclass,
+		Methods:    methods,
+	}
 }
 
 // Expression type
@@ -76,6 +87,14 @@ func (stmt *Function) Accept(visitor StmtVisitor) interface{} {
 		return nil
 	}
 	return visitor.VisitFunctionStmt(stmt)
+}
+
+func NewFunctionStmt(name token.Token, params []token.Token, body []Stmt) *Function {
+	return &Function{
+		Name:   name,
+		Params: params,
+		Body:   body,
+	}
 }
 
 // If type

@@ -16,14 +16,14 @@ type LoxError struct {
 
 // Error implements the error interface for RuntimeError.
 func (e *LoxError) Error() string {
-	return fmt.Sprintf("[line %d] Error %s: %s", e.Line, e.Where, e.Message)
+	return fmt.Sprintf("[line %d] Error at %s: %s", e.Line, e.Where, e.Message)
 }
 
 // NewParseError creates a parse error (non-fatal)
 func NewParseError(token token.Token, message string) *LoxError {
-	where := " at end"
+	where := "end"
 	if token.Type.String() != "EOF" {
-		where = " at '" + token.Lexeme + "'"
+		where = token.Lexeme
 	}
 	return &LoxError{
 		Line:    token.Line,

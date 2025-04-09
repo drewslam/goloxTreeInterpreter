@@ -76,7 +76,6 @@ func (r *Resolver) VisitClassStmt(stmt *ast.Class) interface{} {
 	if stmt.Superclass != nil && stmt.Name.Lexeme == stmt.Superclass.Name.Lexeme {
 		err := loxError.NewParseError(stmt.Superclass.Name, "A class cannot inherit from itself.")
 		loxError.ReportError(err)
-		return nil
 	}
 
 	if stmt.Superclass != nil {

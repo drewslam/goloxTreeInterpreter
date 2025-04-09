@@ -52,6 +52,15 @@ func (p *Parser) declaration() (ast.Stmt, *loxError.LoxError) {
 
 func (p *Parser) classDeclaration() (ast.Stmt, *loxError.LoxError) {
 	name := p.consume(token.IDENTIFIER, "Expect class name.")
+
+	var superclass *ast.Variable
+	if p.match(token.LESS) {
+		p.consume(token.IDENTIFIER, "Expect superclass name.")
+		superclass = &ast.Variable{
+			Name: p.previous(),
+		}
+	}
+
 	p.consume(token.LEFT_BRACE, "Expect '{' before class body.")
 
 	var methods []*ast.Function
@@ -73,8 +82,9 @@ func (p *Parser) classDeclaration() (ast.Stmt, *loxError.LoxError) {
 
 	p.consume(token.RIGHT_BRACE, "Expect '}' after class body.")
 	return &ast.Class{
-		Name:    name,
-		Methods: methods,
+		Name:       name,
+		Superclass: superclass,
+		Methods:    methods,
 	}, nil
 }
 

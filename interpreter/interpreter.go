@@ -43,7 +43,8 @@ func (i *Interpreter) Interpret(statements []ast.Stmt) {
 			switch v := r.(type) {
 			case *loxError.LoxError:
 				if v.IsFatal {
-					loxError.ReportAndPanic(v)
+					loxError.ReportError(v)
+					return
 				}
 			case *returnValue.ReturnValue:
 				if v.Value != nil {
@@ -121,6 +122,22 @@ func (i *Interpreter) VisitBlockStmt(stmt *ast.Block) interface{} {
 }
 
 func (i *Interpreter) VisitClassStmt(stmt *ast.Class) interface{} {
+	var superclass *object.LoxClass
+	if stmt.Superclass != nil {
+		if stmt.Superclass.Name.Lexeme == stmt.Name.Lexeme {
+			loxDebug.LogDebug("Skipping class %s: Inherits from itself (already handled by resolver)", stmt.Name.Lexeme)
+			return nil
+		}
+		sc := i.evaluate(stmt.Superclass)
+		klass, ok := sc.(*object.LoxClass)
+		if !ok {
+			err := loxError.NewRuntimeError(stmt.Superclass.Name, stmt.Name.Lexeme, "Superclass must be a class.")
+			loxError.ReportAndPanic(err)
+			return nil
+		}
+		superclass = klass
+	}
+
 	i.environment.Define(stmt.Name.Lexeme, nil)
 
 	methods := make(map[string]*object.LoxFunction)
@@ -129,9 +146,11 @@ func (i *Interpreter) VisitClassStmt(stmt *ast.Class) interface{} {
 		methods[method.Name.Lexeme] = function
 	}
 
+	// sc := superclass.(*object.LoxClass)
 	klass := &object.LoxClass{
-		Name:    stmt.Name.Lexeme,
-		Methods: methods,
+		Name:       stmt.Name.Lexeme,
+		Superclass: superclass,
+		Methods:    methods,
 	}
 	/*
 		instance := &object.LoxInstance{
@@ -273,7 +292,7 @@ func (i *Interpreter) VisitBinaryExpr(expr *ast.Binary) interface{} {
 				return leftVal + rightVal
 			}
 		}
-		err := loxError.NewRuntimeError(expr.Operator, fmt.Sprintf("[Line %d]: ", expr.Operator.Line), "Operands must be two numbers or two strings.")
+		err := loxError.NewRuntimeError(expr.Operator, expr.Operator.Lexeme, "Operands must be two numbers or two strings.")
 		loxError.ReportAndPanic(err)
 	case token.SLASH:
 		i.checkNumberOperands(expr.Operator, left, right)
@@ -301,13 +320,13 @@ func (i *Interpreter) VisitCallExpr(expr *ast.Call) interface{} {
 
 	function, ok := callee.(loxCallable.LoxCallable)
 	if !ok {
-		err := loxError.NewRuntimeError(expr.Paren, fmt.Sprintf("[Line %d]: ", expr.Paren.Line), "Can only call functions and classes.")
+		err := loxError.NewRuntimeError(expr.Paren, expr.Paren.Lexeme, "Can only call functions and classes.")
 		loxError.ReportAndPanic(err)
 	}
 
 	if len(arguments) != function.Arity() {
 		message := fmt.Sprintf("Expected %d arguments but got %d.", function.Arity(), len(arguments))
-		err := loxError.NewRuntimeError(expr.Paren, fmt.Sprintf("[Line %d]: ", expr.Paren.Line), message)
+		err := loxError.NewRuntimeError(expr.Paren, expr.Paren.Lexeme, message)
 		loxError.ReportAndPanic(err)
 	}
 
@@ -322,7 +341,7 @@ func (i *Interpreter) VisitGetExpr(expr *ast.Get) interface{} {
 		return instance.Get(expr.Name)
 	}
 
-	return loxError.NewRuntimeError(expr.Name, fmt.Sprintf("[Line %d]: ", expr.Name.Line), "Only instances have properties.")
+	return loxError.NewRuntimeError(expr.Name, expr.Name.Lexeme, "Only instances have properties.")
 }
 
 func (i *Interpreter) VisitGroupingExpr(expr *ast.Grouping) interface{} {
@@ -356,7 +375,7 @@ func (i *Interpreter) VisitSetExpr(expr *ast.Set) interface{} {
 	objekt := i.evaluate(expr.Object)
 
 	if _, ok := objekt.(*object.LoxInstance); !ok {
-		return loxError.NewRuntimeError(expr.Name, fmt.Sprintf("[Line %d]: ", expr.Name.Line), "Only instances have fields.")
+		return loxError.NewRuntimeError(expr.Name, expr.Name.Lexeme, "Only instances have fields.")
 	}
 
 	value := i.evaluate(expr.Value)

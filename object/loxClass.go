@@ -7,8 +7,9 @@ import (
 // type Interpreter interface{}
 
 type LoxClass struct {
-	Name    string
-	Methods map[string]*LoxFunction
+	Name       string
+	Superclass *LoxClass
+	Methods    map[string]*LoxFunction
 }
 
 func (l *LoxClass) FindMethod(name string) (*LoxFunction, bool) {
