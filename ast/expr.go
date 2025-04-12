@@ -15,6 +15,7 @@ type ExprVisitor interface {
 	VisitLiteralExpr(expr *Literal) interface{}
 	VisitLogicalExpr(expr *Logical) interface{}
 	VisitSetExpr(expr *Set) interface{}
+	VisitSuperExpr(expr *Super) interface{}
 	VisitThisExpr(expr *This) interface{}
 	VisitUnaryExpr(expr *Unary) interface{}
 	VisitVariableExpr(expr *Variable) interface{}
@@ -124,6 +125,19 @@ func (expr *Set) Accept(visitor ExprVisitor) interface{} {
 		return nil
 	}
 	return visitor.VisitSetExpr(expr)
+}
+
+// Super
+type Super struct {
+	Keyword token.Token
+	Method  token.Token
+}
+
+func (expr *Super) Accept(visitor ExprVisitor) interface{} {
+	if visitor == nil {
+		return nil
+	}
+	return visitor.VisitSuperExpr(expr)
 }
 
 // This

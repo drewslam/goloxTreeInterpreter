@@ -13,9 +13,12 @@ type LoxClass struct {
 }
 
 func (l *LoxClass) FindMethod(name string) (*LoxFunction, bool) {
-
 	if value, ok := l.Methods[name]; ok {
 		return value, true
+	}
+
+	if l.Superclass != nil {
+		return l.Superclass.FindMethod(name)
 	}
 
 	return nil, false

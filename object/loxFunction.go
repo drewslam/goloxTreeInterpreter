@@ -28,10 +28,6 @@ func NewLoxFunction(declaration *ast.Function, closure *environment.Environment,
 
 func (l *LoxFunction) Bind(instance *LoxInstance) *LoxFunction {
 	env := environment.NewEnvironment(l.Closure)
-	/*environment := &environment.Environment{
-		Enclosing: l.Closure,
-		Values:    make(map[string]interface{}),
-	}*/
 	env.Define("this", instance)
 	return &LoxFunction{
 		Declaration:   l.Declaration,

@@ -2,6 +2,7 @@ package loxError
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/drewslam/goloxTreeInterpreter/token"
 )
@@ -61,7 +62,19 @@ func ReportError(err *LoxError) {
 // ReportAndPanic reports an error and panics if it's fatal
 func ReportAndPanic(err *LoxError) {
 	fmt.Println(err.Error())
-	if err.IsFatal {
-		panic(err)
+	panic(err)
+}
+
+func HandleRecoveredError(r any) {
+	if err, ok := r.(*LoxError); ok {
+		fmt.Println(err.Error())
+		if err.IsFatal {
+			os.Exit(1)
+		}
+		// Error is non-fatal
+		return
 	}
+
+	// Not a LoxError -- Repanic
+	panic(r)
 }

@@ -21,6 +21,7 @@ type Resolver struct {
 	Interpreter     *interpreter.Interpreter
 	scopes          []map[string]bool
 	CurrentFunction FunctionType
+	currentClass    ClassType
 }
 
 type FunctionType int
@@ -37,6 +38,7 @@ func NewResolver(interpreter *interpreter.Interpreter) *Resolver {
 		Interpreter:     interpreter,
 		scopes:          make([]map[string]bool, 0),
 		CurrentFunction: NOT_FUNCTION,
+		currentClass:    NOT_CLASS,
 	}
 }
 
@@ -45,9 +47,10 @@ type ClassType int
 const (
 	NOT_CLASS ClassType = iota
 	CLASS
+	SUBCLASS
 )
 
-var currentClass ClassType = NOT_CLASS
+// var currentClass ClassType = NOT_CLASS
 
 var _ ast.StmtVisitor = (*Resolver)(nil)
 var _ ast.ExprVisitor = (*Resolver)(nil)
@@ -67,8 +70,8 @@ func (r *Resolver) VisitBlockStmt(stmt *ast.Block) interface{} {
 }
 
 func (r *Resolver) VisitClassStmt(stmt *ast.Class) interface{} {
-	enclosingClass := currentClass
-	currentClass = CLASS
+	enclosingClass := r.currentClass
+	r.currentClass = CLASS
 
 	r.declare(stmt.Name)
 	r.define(stmt.Name)
@@ -80,7 +83,11 @@ func (r *Resolver) VisitClassStmt(stmt *ast.Class) interface{} {
 	}
 
 	if stmt.Superclass != nil {
+		r.currentClass = SUBCLASS
 		r.resolve(stmt.Superclass)
+
+		r.beginScope()
+		r.scopes[len(r.scopes)-1]["super"] = true
 	}
 
 	r.beginScope()
@@ -97,7 +104,11 @@ func (r *Resolver) VisitClassStmt(stmt *ast.Class) interface{} {
 	}
 	r.endScope()
 
-	currentClass = enclosingClass
+	if stmt.Superclass != nil {
+		r.endScope()
+	}
+
+	r.currentClass = enclosingClass
 	return nil
 }
 
@@ -162,6 +173,14 @@ func (r *Resolver) resolveFunction(function *ast.Function, functiontype Function
 	r.CurrentFunction = functiontype
 
 	r.beginScope()
+
+	if r.currentClass != NOT_CLASS {
+		r.scopes[len(r.scopes)-1]["this"] = true
+		if r.currentClass == SUBCLASS {
+			r.scopes[len(r.scopes)-1]["super"] = true
+		}
+	}
+
 	for _, param := range function.Params {
 		r.declare(param)
 		r.define(param)
@@ -212,10 +231,6 @@ func (r *Resolver) define(name token.Token) {
 }
 
 func (r *Resolver) resolveLocal(expr ast.Expr, name token.Token) {
-	/*if len(r.scopes) == 0 {
-		// panic("No active scope when resolving a variable.")
-		return
-	}*/
 	for i := len(r.scopes) - 1; i >= 0; i-- {
 		if _, ok := r.scopes[i][name.Lexeme]; ok {
 			depth := len(r.scopes) - 1 - i
@@ -298,8 +313,23 @@ func (r *Resolver) VisitSetExpr(expr *ast.Set) interface{} {
 	return nil
 }
 
+func (r *Resolver) VisitSuperExpr(expr *ast.Super) interface{} {
+	if r.currentClass == NOT_CLASS {
+		err := loxError.NewRuntimeError(expr.Keyword, "super", "Can't use 'super' outside of a class.")
+		loxError.ReportAndPanic(err)
+		return nil
+	} else if r.currentClass != SUBCLASS {
+		err := loxError.NewRuntimeError(expr.Keyword, "super", "Can't use 'super' in a class with no superclass.")
+		loxError.ReportAndPanic(err)
+		return nil
+	}
+
+	r.resolveLocal(expr, expr.Keyword)
+	return nil
+}
+
 func (r *Resolver) VisitThisExpr(expr *ast.This) interface{} {
-	if currentClass == NOT_CLASS {
+	if r.currentClass == NOT_CLASS {
 		return loxError.NewRuntimeError(expr.Keyword, fmt.Sprintf("[Line %d]: ", expr.Keyword.Line), "Can't use 'this' outside of a class.")
 	}
 

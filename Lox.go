@@ -90,11 +90,10 @@ func main() {
 	case 2:
 		err := lox.runFile(os.Args[1])
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-
 			// Determine exit code based on error type
 			var loxErr *loxError.LoxError
 			if errors.As(err, &loxErr) {
+				loxError.ReportError(loxErr)
 				if loxErr.IsFatal {
 					os.Exit(70) // Runtime error
 				} else {

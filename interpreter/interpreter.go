@@ -2,6 +2,7 @@ package interpreter
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/drewslam/goloxTreeInterpreter/ast"
 	"github.com/drewslam/goloxTreeInterpreter/environment"
@@ -42,10 +43,11 @@ func (i *Interpreter) Interpret(statements []ast.Stmt) {
 		if r := recover(); r != nil {
 			switch v := r.(type) {
 			case *loxError.LoxError:
+				loxError.ReportError(v)
 				if v.IsFatal {
-					loxError.ReportError(v)
-					return
+					os.Exit(1)
 				}
+				return
 			case *returnValue.ReturnValue:
 				if v.Value != nil {
 					fmt.Println(v.Value)
@@ -57,9 +59,6 @@ func (i *Interpreter) Interpret(statements []ast.Stmt) {
 	}()
 
 	for _, stmt := range statements {
-		/*if err := i.execute(stmt); err != nil {
-			panic(err)
-		}*/
 		result := i.execute(stmt)
 		loxDebug.LogInfo("Environment after executing %T: %+v\n", stmt, i.environment.Values)
 		if result != nil {
@@ -140,6 +139,11 @@ func (i *Interpreter) VisitClassStmt(stmt *ast.Class) interface{} {
 
 	i.environment.Define(stmt.Name.Lexeme, nil)
 
+	if stmt.Superclass != nil {
+		i.environment = environment.NewEnvironment(i.environment)
+		i.environment.Define("super", superclass)
+	}
+
 	methods := make(map[string]*object.LoxFunction)
 	for _, method := range stmt.Methods {
 		function := object.NewLoxFunction(method, i.environment, method.Name.Lexeme == "init")
@@ -152,12 +156,11 @@ func (i *Interpreter) VisitClassStmt(stmt *ast.Class) interface{} {
 		Superclass: superclass,
 		Methods:    methods,
 	}
-	/*
-		instance := &object.LoxInstance{
-			Klass:  klass,
-			Fields: make(map[string]interface{}),
-		}
-	*/
+
+	if superclass != nil {
+		i.environment = i.environment.Enclosing
+	}
+
 	i.environment.Assign(stmt.Name, klass)
 	return nil
 }
@@ -172,9 +175,7 @@ func (i *Interpreter) evaluate(expr ast.Expr) interface{} {
 
 	defer func() {
 		if r := recover(); r != nil {
-			if err, ok := r.(*loxError.LoxError); ok && err.IsFatal {
-				loxError.ReportAndPanic(err)
-			}
+			loxError.HandleRecoveredError(r)
 		}
 	}()
 
@@ -320,14 +321,12 @@ func (i *Interpreter) VisitCallExpr(expr *ast.Call) interface{} {
 
 	function, ok := callee.(loxCallable.LoxCallable)
 	if !ok {
-		err := loxError.NewRuntimeError(expr.Paren, expr.Paren.Lexeme, "Can only call functions and classes.")
-		loxError.ReportAndPanic(err)
+		panic(loxError.NewRuntimeError(expr.Paren, expr.Paren.Lexeme, "Can only call functions and classes."))
 	}
 
 	if len(arguments) != function.Arity() {
 		message := fmt.Sprintf("Expected %d arguments but got %d.", function.Arity(), len(arguments))
-		err := loxError.NewRuntimeError(expr.Paren, expr.Paren.Lexeme, message)
-		loxError.ReportAndPanic(err)
+		panic(loxError.NewRuntimeError(expr.Paren, expr.Paren.Lexeme, message))
 	}
 
 	result := function.Call(i, arguments)
@@ -381,6 +380,40 @@ func (i *Interpreter) VisitSetExpr(expr *ast.Set) interface{} {
 	value := i.evaluate(expr.Value)
 	objekt.(*object.LoxInstance).Set(expr.Name, value)
 	return value
+}
+
+func (i *Interpreter) VisitSuperExpr(expr *ast.Super) interface{} {
+	distance, ok := i.locals[expr]
+	if !ok {
+		er := loxError.NewRuntimeError(expr.Keyword, "super", "Cannot resolve 'super' distance.")
+		loxError.ReportAndPanic(er)
+	}
+	superclass, err := i.environment.GetAt(distance, "super")
+	if err != nil {
+		er := loxError.NewRuntimeError(expr.Keyword, "super", "Undefined superclass reference.")
+		loxError.ReportAndPanic(er)
+	}
+	sc, ok := superclass.(*object.LoxClass)
+	if !ok {
+		er := loxError.NewRuntimeError(expr.Keyword, "super", "'super' does not refer to a class.")
+		loxError.ReportAndPanic(er)
+	}
+	objekt, err := i.environment.GetAt(distance-1, "this")
+	if err != nil {
+		er := loxError.NewRuntimeError(expr.Keyword, "this", "Undefined 'this' reference.")
+		loxError.ReportAndPanic(er)
+	}
+	obj, ok := objekt.(*object.LoxInstance)
+	if !ok {
+		er := loxError.NewRuntimeError(expr.Keyword, "this", "'this' is not bound to an instance.")
+		loxError.ReportAndPanic(er)
+	}
+	method, ok := sc.FindMethod(expr.Method.Lexeme)
+	if !ok {
+		er := loxError.NewRuntimeError(expr.Method, expr.Method.Lexeme, fmt.Sprintf("Undefined property '%s'.", expr.Method.Lexeme))
+		loxError.ReportAndPanic(er)
+	}
+	return method.Bind(obj)
 }
 
 func (i *Interpreter) VisitThisExpr(expr *ast.This) interface{} {

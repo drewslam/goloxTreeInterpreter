@@ -615,6 +615,16 @@ func (p *Parser) primary() (ast.Expr, *loxError.LoxError) {
 		}, nil
 	}
 
+	if p.match(token.SUPER) {
+		keyword := p.previous()
+		p.consume(token.DOT, "Expect '.' after 'super'.")
+		method := p.consume(token.IDENTIFIER, "Expect superclass method name.")
+		return &ast.Super{
+			Keyword: keyword,
+			Method:  method,
+		}, nil
+	}
+
 	if p.match(token.THIS) {
 		return &ast.This{
 			Keyword: p.previous(),
