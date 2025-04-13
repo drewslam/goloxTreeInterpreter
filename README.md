@@ -17,6 +17,6 @@ An interpreted, dynamically typed, object-oriented scripting language based off 
 ## How to build
 
 - Clone the repo
-`git clone https://github.com/drewslam/goloxTreeInterpreter.git`
+    `git clone https://github.com/drewslam/goloxTreeInterpreter.git`
 - Call go build
-`go build Lox.go`
+    `go build Lox.go`
