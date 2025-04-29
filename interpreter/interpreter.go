@@ -131,8 +131,9 @@ func (i *Interpreter) VisitClassStmt(stmt *ast.Class) interface{} {
 		klass, ok := sc.(*object.LoxClass)
 		if !ok {
 			err := loxError.NewRuntimeError(stmt.Superclass.Name, stmt.Name.Lexeme, "Superclass must be a class.")
-			loxError.ReportAndPanic(err)
-			return nil
+			panic(err)
+			//loxError.ReportAndPanic(err)
+			// return nil
 		}
 		superclass = klass
 	}
@@ -168,7 +169,8 @@ func (i *Interpreter) VisitClassStmt(stmt *ast.Class) interface{} {
 func (i *Interpreter) evaluate(expr ast.Expr) interface{} {
 	if expr == nil {
 		err := loxError.NewRuntimeError(token.Token{Line: 0}, "", "Tried to evaluate a nil expression.")
-		loxError.ReportAndPanic(err)
+		panic(err)
+		//loxError.ReportAndPanic(err)
 	}
 
 	loxDebug.LogInfo("Evaluating expression: %T\n", expr)
@@ -236,13 +238,26 @@ func (i *Interpreter) VisitVarStmt(stmt *ast.Var) interface{} {
 }
 
 func (i *Interpreter) VisitWhileStmt(stmt *ast.While) interface{} {
-	previous := i.environment
+	// previous := i.environment
+
+	defer func() {
+		if r := recover(); r != nil {
+			// i.environment = previous
+			// Re-panic to propagate the return
+			panic(r)
+		}
+	}()
 
 	for i.isTruthy(i.evaluate(stmt.Condition)) {
-		i.execute(stmt.Body)
+		result := i.execute(stmt.Body)
+
+		if returnVal, ok := result.(*returnValue.ReturnValue); ok {
+			// i.environment = previous
+			return returnVal
+		}
 	}
 
-	i.environment = previous
+	// i.environment = previous
 	return nil
 }
 
@@ -252,7 +267,11 @@ func (i *Interpreter) VisitAssignExpr(expr *ast.Assign) interface{} {
 	if distance, exists := i.locals[expr]; exists {
 		i.environment.AssignAt(distance, expr.Name, value)
 	} else {
-		i.Globals.Assign(expr.Name, value)
+		// i.Globals.Assign(expr.Name, value)
+		err := i.environment.Assign(expr.Name, value)
+		if err != nil {
+			panic(err)
+		}
 	}
 
 	return value
@@ -294,7 +313,8 @@ func (i *Interpreter) VisitBinaryExpr(expr *ast.Binary) interface{} {
 			}
 		}
 		err := loxError.NewRuntimeError(expr.Operator, expr.Operator.Lexeme, "Operands must be two numbers or two strings.")
-		loxError.ReportAndPanic(err)
+		panic(err)
+		//loxError.ReportAndPanic(err)
 	case token.SLASH:
 		i.checkNumberOperands(expr.Operator, left, right)
 		return left.(float64) / right.(float64)
@@ -386,32 +406,38 @@ func (i *Interpreter) VisitSuperExpr(expr *ast.Super) interface{} {
 	distance, ok := i.locals[expr]
 	if !ok {
 		er := loxError.NewRuntimeError(expr.Keyword, "super", "Cannot resolve 'super' distance.")
-		loxError.ReportAndPanic(er)
+		panic(er)
+		//loxError.ReportAndPanic(er)
 	}
 	superclass, err := i.environment.GetAt(distance, "super")
 	if err != nil {
 		er := loxError.NewRuntimeError(expr.Keyword, "super", "Undefined superclass reference.")
-		loxError.ReportAndPanic(er)
+		panic(er)
+		// loxError.ReportAndPanic(er)
 	}
 	sc, ok := superclass.(*object.LoxClass)
 	if !ok {
 		er := loxError.NewRuntimeError(expr.Keyword, "super", "'super' does not refer to a class.")
-		loxError.ReportAndPanic(er)
+		panic(er)
+		//loxError.ReportAndPanic(er)
 	}
 	objekt, err := i.environment.GetAt(distance-1, "this")
 	if err != nil {
 		er := loxError.NewRuntimeError(expr.Keyword, "this", "Undefined 'this' reference.")
-		loxError.ReportAndPanic(er)
+		panic(er)
+		//loxError.ReportAndPanic(er)
 	}
 	obj, ok := objekt.(*object.LoxInstance)
 	if !ok {
 		er := loxError.NewRuntimeError(expr.Keyword, "this", "'this' is not bound to an instance.")
-		loxError.ReportAndPanic(er)
+		panic(er)
+		//loxError.ReportAndPanic(er)
 	}
 	method, ok := sc.FindMethod(expr.Method.Lexeme)
 	if !ok {
 		er := loxError.NewRuntimeError(expr.Method, expr.Method.Lexeme, fmt.Sprintf("Undefined property '%s'.", expr.Method.Lexeme))
-		loxError.ReportAndPanic(er)
+		panic(er)
+		//loxError.ReportAndPanic(er)
 	}
 	return method.Bind(obj)
 }
@@ -467,7 +493,8 @@ func (i *Interpreter) lookUpVariable(name token.Token, expr ast.Expr) interface{
 		if err != nil {
 			loxDebug.LogError("Error retrieving local variable '%s': %v\n", name.Lexeme, err)
 			err := loxError.NewRuntimeError(name, fmt.Sprintf("%d", name.Line), "Undefined local variable '"+name.Lexeme+"'")
-			loxError.ReportAndPanic(err)
+			panic(err)
+			// loxError.ReportAndPanic(err)
 		}
 		loxDebug.LogDebug("Local variable '%s' resolved to: %v\n", name.Lexeme, res)
 		return res
@@ -479,7 +506,8 @@ func (i *Interpreter) lookUpVariable(name token.Token, expr ast.Expr) interface{
 	if err != nil {
 		loxDebug.LogError("Error retrieving global variable '%s': %v\n", name.Lexeme, err)
 		err := loxError.NewRuntimeError(name, fmt.Sprintf("%d", name.Line), "Undefined variable '"+name.Lexeme+"'")
-		loxError.ReportAndPanic(err)
+		panic(err)
+		//loxError.ReportAndPanic(err)
 	}
 	loxDebug.LogDebug("Global variable '%s' resolved to: %v\n", name.Lexeme, res)
 	return res
