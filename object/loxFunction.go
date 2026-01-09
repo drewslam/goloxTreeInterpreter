@@ -47,7 +47,7 @@ func (l *LoxFunction) Call(interpreter loxCallable.Interpreter, arguments []any)
 	if len(arguments) != len(l.Declaration.Params) {
 		message := (fmt.Sprintf("Expected %d arguments but got %d.", len(l.Declaration.Params), len(arguments)))
 		err := loxError.NewRuntimeError(l.Declaration.Name, "", message)
-		loxError.ReportAndPanic(err)
+		panic(err)
 	}
 
 	env := environment.NewEnvironment(l.Closure)

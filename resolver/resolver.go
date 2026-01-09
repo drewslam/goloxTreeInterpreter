@@ -219,7 +219,7 @@ func (r *Resolver) declare(name token.Token) *loxError.LoxError {
 		scope[name.Lexeme] = false
 	} else {
 		err := loxError.NewRuntimeError(name, name.Lexeme, "Already a variable with this name in this scope.")
-		loxError.ReportAndPanic(err)
+		Panic(err)
 		return nil
 	}
 
@@ -322,11 +322,11 @@ func (r *Resolver) VisitSetExpr(expr *ast.Set) any {
 func (r *Resolver) VisitSuperExpr(expr *ast.Super) any {
 	if r.currentClass == NOT_CLASS {
 		err := loxError.NewRuntimeError(expr.Keyword, "super", "Can't use 'super' outside of a class.")
-		loxError.ReportAndPanic(err)
+		Panic(err)
 		return nil
 	} else if r.currentClass != SUBCLASS {
 		err := loxError.NewRuntimeError(expr.Keyword, "super", "Can't use 'super' in a class with no superclass.")
-		loxError.ReportAndPanic(err)
+		Panic(err)
 		return nil
 	}
 

@@ -131,8 +131,6 @@ func (i *Interpreter) VisitClassStmt(stmt *ast.Class) any {
 		if !ok {
 			err := loxError.NewRuntimeError(stmt.Superclass.Name, stmt.Name.Lexeme, "Superclass must be a class.")
 			panic(err)
-			//loxError.ReportAndPanic(err)
-			// return nil
 		}
 		superclass = klass
 	}
@@ -169,7 +167,6 @@ func (i *Interpreter) evaluate(expr ast.Expr) any {
 	if expr == nil {
 		err := loxError.NewRuntimeError(token.Token{Line: 0}, "", "Tried to evaluate a nil expression.")
 		panic(err)
-		//loxError.ReportAndPanic(err)
 	}
 
 	//loxDebug.LogInfo("Evaluating expression: %T\n", expr)
@@ -313,7 +310,6 @@ func (i *Interpreter) VisitBinaryExpr(expr *ast.Binary) any {
 		}
 		err := loxError.NewRuntimeError(expr.Operator, expr.Operator.Lexeme, "Operands must be two numbers or two strings.")
 		panic(err)
-		//loxError.ReportAndPanic(err)
 	case token.SLASH:
 		i.checkNumberOperands(expr.Operator, left, right)
 		return left.(float64) / right.(float64)
@@ -487,7 +483,6 @@ func (i *Interpreter) lookUpVariable(name token.Token, expr ast.Expr) any {
 			//loxDebug.LogError("Error retrieving local variable '%s': %v\n", name.Lexeme, err)
 			err := loxError.NewRuntimeError(name, fmt.Sprintf("%d", name.Line), "Undefined local variable '"+name.Lexeme+"'")
 			panic(err)
-			// loxError.ReportAndPanic(err)
 		}
 		//loxDebug.LogDebug("Local variable '%s' resolved to: %v\n", name.Lexeme, res)
 		return res
@@ -500,7 +495,6 @@ func (i *Interpreter) lookUpVariable(name token.Token, expr ast.Expr) any {
 		//loxDebug.LogError("Error retrieving global variable '%s': %v\n", name.Lexeme, err)
 		err := loxError.NewRuntimeError(name, fmt.Sprintf("%d", name.Line), "Undefined variable '"+name.Lexeme+"'")
 		panic(err)
-		//loxError.ReportAndPanic(err)
 	}
 	//loxDebug.LogDebug("Global variable '%s' resolved to: %v\n", name.Lexeme, res)
 	return res
