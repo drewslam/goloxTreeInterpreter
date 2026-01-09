@@ -7,7 +7,6 @@ import (
 	"os"
 
 	"github.com/drewslam/goloxTreeInterpreter/interpreter"
-	"github.com/drewslam/goloxTreeInterpreter/loxDebug"
 	"github.com/drewslam/goloxTreeInterpreter/loxError"
 	"github.com/drewslam/goloxTreeInterpreter/parser"
 	"github.com/drewslam/goloxTreeInterpreter/resolver"
@@ -79,8 +78,14 @@ func (l *Lox) run(source string) *loxError.LoxError {
 }
 
 func main() {
-	loxDebug.InitializeLogger()
-	defer loxDebug.CloseLogger()
+	//loxDebug.InitializeLogger()
+	//defer loxDebug.CloseLogger()
+
+	defer func() {
+		if r := recover(); r != nil {
+			loxError.HandleRecoveredError(r)
+		}
+	}()
 
 	lox := NewLox()
 

@@ -35,19 +35,19 @@ func InitializeLogger() {
 	log.Println("Logger initialized, writing to", filename)
 }
 
-func LogDebug(format string, v ...interface{}) {
+func LogDebug(format string, v ...any) {
 	if logger != nil {
 		logger.Printf("[DEBUG] "+format, v...)
 	}
 }
 
-func LogInfo(format string, v ...interface{}) {
+func LogInfo(format string, v ...any) {
 	if logger != nil {
 		logger.Printf("[INFO] "+format, v...)
 	}
 }
 
-func LogError(format string, v ...interface{}) {
+func LogError(format string, v ...any) {
 	if logger != nil {
 		logger.Printf("[ERROR] "+format, v...)
 	}

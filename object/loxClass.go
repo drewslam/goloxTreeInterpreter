@@ -4,7 +4,7 @@ import (
 	"github.com/drewslam/goloxTreeInterpreter/loxCallable"
 )
 
-// type Interpreter interface{}
+// type Interpreter any
 
 type LoxClass struct {
 	Name       string
@@ -28,10 +28,10 @@ func (l *LoxClass) String() string {
 	return l.Name
 }
 
-func (l *LoxClass) Call(interpreter loxCallable.Interpreter, arguments []interface{}) interface{} {
+func (l *LoxClass) Call(interpreter loxCallable.Interpreter, arguments []any) any {
 	instance := &LoxInstance{
 		Klass:  l,
-		Fields: make(map[string]interface{}),
+		Fields: make(map[string]any),
 	}
 
 	initializer, exists := l.FindMethod("init")

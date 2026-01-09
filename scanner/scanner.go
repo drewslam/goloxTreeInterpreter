@@ -247,7 +247,7 @@ func (s *Scanner) advance() byte {
 	return s.Source[s.Current-1]
 }
 
-func (s *Scanner) addToken(tokenType token.TokenType, literal interface{}) {
+func (s *Scanner) addToken(tokenType token.TokenType, literal any) {
 	lexeme := s.Source[s.Start:s.Current]
 
 	s.Tokens = append(s.Tokens, token.Token{

@@ -6,10 +6,8 @@ import (
 	"github.com/drewslam/goloxTreeInterpreter/ast"
 	"github.com/drewslam/goloxTreeInterpreter/environment"
 	"github.com/drewslam/goloxTreeInterpreter/loxCallable"
-	"github.com/drewslam/goloxTreeInterpreter/loxDebug"
 	"github.com/drewslam/goloxTreeInterpreter/loxError"
 	"github.com/drewslam/goloxTreeInterpreter/returnValue"
-	"github.com/drewslam/goloxTreeInterpreter/token"
 )
 
 type LoxFunction struct {
@@ -44,7 +42,7 @@ func (l *LoxFunction) Arity() int {
 	return len(l.Declaration.Params)
 }
 
-func (l *LoxFunction) Call(interpreter loxCallable.Interpreter, arguments []interface{}) interface{} {
+func (l *LoxFunction) Call(interpreter loxCallable.Interpreter, arguments []any) any {
 	// Ensure argument count matches parameter count
 	if len(arguments) != len(l.Declaration.Params) {
 		message := (fmt.Sprintf("Expected %d arguments but got %d.", len(l.Declaration.Params), len(arguments)))
@@ -58,42 +56,42 @@ func (l *LoxFunction) Call(interpreter loxCallable.Interpreter, arguments []inte
 	for i, param := range l.Declaration.Params {
 		env.Define(param.Lexeme, arguments[i])
 	}
-
-	for _, param := range l.Declaration.Params {
-		val, err := env.Get(token.Token{Lexeme: param.Lexeme})
-		loxDebug.LogDebug("Parameter %s = %v (error %v)\n", param.Lexeme, val, err)
-	}
-
-	var result interface{} = nil
+	/*
+		for _, param := range l.Declaration.Params {
+			val, err := env.Get(token.Token{Lexeme: param.Lexeme})
+			//loxDebug.LogDebug("Parameter %s = %v (error %v)\n", param.Lexeme, val, err)
+		}
+	*/
+	var result any = nil
 
 	// Try executing the function
 	func() {
 		defer func() {
 			if r := recover(); r != nil {
 				if rv, ok := r.(*returnValue.ReturnValue); ok {
-					loxDebug.LogDebug("Recovered return value:", rv.Value)
+					//loxDebug.LogDebug("Recovered return value:", rv.Value)
 					result = rv.Value
-					loxDebug.LogDebug("Stored returnVal in Call():", result)
+					//loxDebug.LogDebug("Stored returnVal in Call():", result)
 					// return
 				} else {
-					loxDebug.LogError("Recovered unknown panic:", r)
+					//loxDebug.LogError("Recovered unknown panic:", r)
 					panic(r) // Re-panic other errors
 				}
 			}
 		}()
 
-		loxDebug.LogDebug("Executing function body for:", l.String())
+		//loxDebug.LogDebug("Executing function body for:", l.String())
 		interpreter.ExecuteBlock(l.Declaration.Body, env)
 	}()
 
 	// Ensure constructors return 'this'
 	if l.IsInitializer {
 		val, _ := l.Closure.GetAt(0, "this")
-		loxDebug.LogDebug("Returning 'this' from Call()")
+		//loxDebug.LogDebug("Returning 'this' from Call()")
 		return val
 	}
 
-	loxDebug.LogDebug("Returning from Call():", result)
+	//loxDebug.LogDebug("Returning from Call():", result)
 	return result
 }
 

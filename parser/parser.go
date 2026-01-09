@@ -55,19 +55,53 @@ func (p *Parser) classDeclaration() (ast.Stmt, *loxError.LoxError) {
 
 	var superclass *ast.Variable
 	if p.match(token.LESS) {
-		p.consume(token.IDENTIFIER, "Expect superclass name.")
+		//p.consume(token.IDENTIFIER, "Expect superclass name.")
+		if !p.check(token.IDENTIFIER) {
+			err := loxError.NewParseError(p.peek(), "Expect superclass name.")
+			loxError.ReportError(err)
+
+			// Syncronize to end of class to avoid cascade
+			for !p.check(token.RIGHT_BRACE) && !p.isAtEnd() {
+				p.advance()
+			}
+
+			/*return &ast.Class{
+				Name:       name,
+				Superclass: nil,
+				Methods:    nil,
+			}, nil*/
+			return nil, err
+		}
+
 		superclass = &ast.Variable{
-			Name: p.previous(),
+			Name: p.advance(),
 		}
 	}
 
-	p.consume(token.LEFT_BRACE, "Expect '{' before class body.")
+	// p.consume(token.LEFT_BRACE, "Expect '{' before class body.")
+	if !p.match(token.LEFT_BRACE) {
+		err := loxError.NewParseError(p.peek(), "Expect '{' before class body.")
+		loxError.ReportError(err)
+
+		// Syncronize to end of class to avoid cascade
+		for !p.check(token.RIGHT_BRACE) && !p.isAtEnd() {
+			p.advance()
+		}
+
+		/*return &ast.Class{
+			Name:       name,
+			Superclass: superclass,
+			Methods:    nil,
+		}, nil*/
+		return nil, err
+	}
 
 	var methods []*ast.Function
 	for !p.check(token.RIGHT_BRACE) && !p.isAtEnd() {
 		if !p.check(token.IDENTIFIER) {
-			// err := loxError.NewParseError(p.peek(), "Only methods are allowed in class bodies.")
-			p.synchronize()
+			err := loxError.NewParseError(p.peek(), "Only methods are allowed in class bodies.")
+			loxError.ReportError(err)
+			p.advance()
 			continue
 		}
 
@@ -118,48 +152,67 @@ func (p *Parser) statement() (ast.Stmt, *loxError.LoxError) {
 func (p *Parser) forStatement() (ast.Stmt, *loxError.LoxError) {
 	p.consume(token.LEFT_PAREN, "Expect '(' after 'for'.")
 
+	var firstErr *loxError.LoxError // Capture first error
+
+	// Initializer
 	var initializer ast.Stmt
 	if p.match(token.SEMICOLON) {
 		initializer = nil
 	} else if p.match(token.VAR) {
 		val, err := p.varDeclaration()
 		if err != nil {
-			return nil, err
+			firstErr = err
+			p.synchronize()
+			// return nil, err
+		} else {
+			initializer = val
 		}
-		initializer = val
 	} else {
 		val, err := p.expressionStatement()
 		if err != nil {
-			return nil, err
+			firstErr = err
+			p.synchronize()
+			// return nil, err
+		} else {
+			initializer = val
 		}
-		initializer = val
 	}
 
+	// Condition
 	var condition ast.Expr = nil
 	if !p.check(token.SEMICOLON) {
 		val, err := p.expression()
-		if err != nil {
-			return nil, err
+		if err != nil && firstErr == nil {
+			firstErr = err
+			p.synchronize()
+			// return nil, err
+		} else {
+			condition = val
 		}
-		condition = val
 	}
 	p.consume(token.SEMICOLON, "Expect ';' after loop condition.")
 
+	// Increment
 	var increment ast.Expr = nil
 	if !p.check(token.RIGHT_PAREN) {
 		val, err := p.expression()
-		if err != nil {
-			return nil, err
+		if err != nil && firstErr == nil {
+			firstErr = err
+			p.synchronize()
+			// return nil, err
+		} else {
+			increment = val
 		}
-		increment = val
 	}
 	p.consume(token.RIGHT_PAREN, "Expect ')' after for clauses.")
 
 	body, err := p.statement()
-	if err != nil {
-		return nil, err
+	if err != nil && firstErr == nil {
+		firstErr = err
+		// return nil, err
 	}
 
+	// Desugar to while loop
 	if increment != nil {
 		body = &ast.Block{
 			Statements: []ast.Stmt{
@@ -189,7 +242,7 @@ func (p *Parser) forStatement() (ast.Stmt, *loxError.LoxError) {
 		}
 	}
 
-	return body, nil
+	return body, firstErr
 }
 
 func (p *Parser) ifStatement() (ast.Stmt, *loxError.LoxError) {
@@ -344,27 +397,20 @@ func (p *Parser) assignment() (ast.Expr, *loxError.LoxError) {
 	if err != nil {
 		return nil, err
 	}
-	/*
-		if expr == nil {
-			loxDebug.LogError("Parsed a nil expression in assignment().")
-		}
-	*/
+
 	if p.match(token.EQUAL) {
 		equals := p.previous()
 		value, err := p.assignment()
-
 		if err != nil {
-			// p.synchronize()
 			return nil, err
 		}
 
 		switch v := expr.(type) {
 		case *ast.Variable:
 			name := v.Name
-			if name.Lexeme == "this" {
-				// p.synchronize()
+			/*if name.Lexeme == "this" {
 				return nil, loxError.NewParseError(name, "Cannot assign to 'this'.")
-			}
+			}*/
 			return &ast.Assign{
 				Name:  name,
 				Value: value,
@@ -375,8 +421,8 @@ func (p *Parser) assignment() (ast.Expr, *loxError.LoxError) {
 				Name:   v.Name,
 				Value:  value,
 			}, nil
-		case *ast.This:
-			return nil, loxError.NewParseError(v.Keyword, "Cannot assign to 'this'.")
+		/*case *ast.This:
+		return nil, loxError.NewParseError(v.Keyword, "Cannot assign to 'this'.")*/
 		default:
 			return nil, loxError.NewParseError(equals, "Invalid assignment target.")
 		}
@@ -704,11 +750,8 @@ func (p *Parser) consume(expected token.TokenType, message string) token.Token {
 	}
 
 	err := loxError.NewParseError(p.peek(), message)
-	// if err != nil {
-	//	panic(err)
-	// }
 	loxError.ReportError(err)
-	p.synchronize()
+	// p.synchronize()
 
 	return token.Token{}
 }

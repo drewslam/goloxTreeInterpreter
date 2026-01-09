@@ -74,7 +74,7 @@ func (t TokenType) String() string {
 type Token struct {
 	Type    TokenType
 	Lexeme  string
-	Literal interface{}
+	Literal any
 	Line    int
 }
 

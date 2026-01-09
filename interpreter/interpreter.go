@@ -7,7 +7,6 @@ import (
 	"github.com/drewslam/goloxTreeInterpreter/ast"
 	"github.com/drewslam/goloxTreeInterpreter/environment"
 	"github.com/drewslam/goloxTreeInterpreter/loxCallable"
-	"github.com/drewslam/goloxTreeInterpreter/loxDebug"
 	"github.com/drewslam/goloxTreeInterpreter/loxError"
 	"github.com/drewslam/goloxTreeInterpreter/object"
 	"github.com/drewslam/goloxTreeInterpreter/returnValue"
@@ -60,16 +59,16 @@ func (i *Interpreter) Interpret(statements []ast.Stmt) {
 
 	for _, stmt := range statements {
 		result := i.execute(stmt)
-		loxDebug.LogInfo("Environment after executing %T: %+v\n", stmt, i.environment.Values)
+		//loxDebug.LogInfo("Environment after executing %T: %+v\n", stmt, i.environment.Values)
 		if result != nil {
-			loxDebug.LogDebug("Executiong returned unexpected value: %v\n", result)
+			//loxDebug.LogDebug("Executiong returned unexpected value: %v\n", result)
 		}
 	}
 }
 
-func (i *Interpreter) execute(stmt ast.Stmt) interface{} {
+func (i *Interpreter) execute(stmt ast.Stmt) any {
 	result := stmt.Accept(i)
-	loxDebug.LogDebug("Executing: %T -> result: %v\n", stmt, result)
+	//loxDebug.LogDebug("Executing: %T -> result: %v\n", stmt, result)
 	return result
 }
 
@@ -84,7 +83,7 @@ func (i *Interpreter) GetGlobals() *environment.Environment {
 	return i.Globals
 }
 
-func (i *Interpreter) ExecuteBlock(statements []ast.Stmt, environment *environment.Environment) interface{} {
+func (i *Interpreter) ExecuteBlock(statements []ast.Stmt, environment *environment.Environment) any {
 	previous := i.environment
 	i.environment = environment
 
@@ -112,7 +111,7 @@ func (i *Interpreter) ExecuteBlock(statements []ast.Stmt, environment *environme
 
 var _ loxCallable.Interpreter = &Interpreter{}
 
-func (i *Interpreter) VisitBlockStmt(stmt *ast.Block) interface{} {
+func (i *Interpreter) VisitBlockStmt(stmt *ast.Block) any {
 	err := i.ExecuteBlock(stmt.Statements, environment.NewEnvironment(i.environment))
 	if err != nil {
 		return err
@@ -120,11 +119,11 @@ func (i *Interpreter) VisitBlockStmt(stmt *ast.Block) interface{} {
 	return nil
 }
 
-func (i *Interpreter) VisitClassStmt(stmt *ast.Class) interface{} {
+func (i *Interpreter) VisitClassStmt(stmt *ast.Class) any {
 	var superclass *object.LoxClass
 	if stmt.Superclass != nil {
 		if stmt.Superclass.Name.Lexeme == stmt.Name.Lexeme {
-			loxDebug.LogDebug("Skipping class %s: Inherits from itself (already handled by resolver)", stmt.Name.Lexeme)
+			//loxDebug.LogDebug("Skipping class %s: Inherits from itself (already handled by resolver)", stmt.Name.Lexeme)
 			return nil
 		}
 		sc := i.evaluate(stmt.Superclass)
@@ -166,14 +165,14 @@ func (i *Interpreter) VisitClassStmt(stmt *ast.Class) interface{} {
 	return nil
 }
 
-func (i *Interpreter) evaluate(expr ast.Expr) interface{} {
+func (i *Interpreter) evaluate(expr ast.Expr) any {
 	if expr == nil {
 		err := loxError.NewRuntimeError(token.Token{Line: 0}, "", "Tried to evaluate a nil expression.")
 		panic(err)
 		//loxError.ReportAndPanic(err)
 	}
 
-	loxDebug.LogInfo("Evaluating expression: %T\n", expr)
+	//loxDebug.LogInfo("Evaluating expression: %T\n", expr)
 
 	defer func() {
 		if r := recover(); r != nil {
@@ -182,26 +181,26 @@ func (i *Interpreter) evaluate(expr ast.Expr) interface{} {
 	}()
 
 	result := expr.Accept(i)
-	loxDebug.LogInfo("Expression result: %v (type: %T)\n", result, result)
+	//loxDebug.LogInfo("Expression result: %v (type: %T)\n", result, result)
 	return result
 }
 
-func (i *Interpreter) VisitExpressionStmt(stmt *ast.Expression) interface{} {
+func (i *Interpreter) VisitExpressionStmt(stmt *ast.Expression) any {
 	i.evaluate(stmt.Expr)
 	return nil
 }
 
-func (i *Interpreter) VisitFunctionStmt(stmt *ast.Function) interface{} {
-	for k, v := range i.environment.Values {
-		loxDebug.LogDebug("Env before function define: %s = %v", k, v)
-	}
+func (i *Interpreter) VisitFunctionStmt(stmt *ast.Function) any {
+	/*for k, v := range i.environment.Values {
+		//loxDebug.LogDebug("Env before function define: %s = %v", k, v)
+	}*/
 
 	function := object.NewLoxFunction(stmt, i.environment, false)
 	i.environment.Define(stmt.Name.Lexeme, function)
 	return nil
 }
 
-func (i *Interpreter) VisitIfStmt(stmt *ast.If) interface{} {
+func (i *Interpreter) VisitIfStmt(stmt *ast.If) any {
 	if i.isTruthy(i.evaluate(stmt.Condition)) {
 		i.execute(stmt.ThenBranch)
 	} else if stmt.ElseBranch != nil {
@@ -210,34 +209,34 @@ func (i *Interpreter) VisitIfStmt(stmt *ast.If) interface{} {
 	return nil
 }
 
-func (i *Interpreter) VisitPrintStmt(stmt *ast.Print) interface{} {
+func (i *Interpreter) VisitPrintStmt(stmt *ast.Print) any {
 	value := i.evaluate(stmt.Expr)
-	loxDebug.LogInfo("Printing value: %v\n", value)
+	//loxDebug.LogInfo("Printing value: %v\n", value)
 	fmt.Println(i.stringify(value))
 	return nil
 }
 
-func (i *Interpreter) VisitReturnStmt(stmt *ast.Return) interface{} {
-	var value interface{} = nil
+func (i *Interpreter) VisitReturnStmt(stmt *ast.Return) any {
+	var value any = nil
 	if stmt.Value != nil {
 		value = i.evaluate(stmt.Value)
 	}
-	loxDebug.LogDebug("Panic with return value:", value)
+	//loxDebug.LogDebug("Panic with return value:", value)
 	panic(&returnValue.ReturnValue{Value: value})
 }
 
-func (i *Interpreter) VisitVarStmt(stmt *ast.Var) interface{} {
-	var value interface{} = nil
+func (i *Interpreter) VisitVarStmt(stmt *ast.Var) any {
+	var value any = nil
 	if stmt.Initializer != nil {
 		value = i.evaluate(stmt.Initializer)
 	}
 
-	loxDebug.LogInfo("Storing variable '%s' with value: %v (type: %T)\n", stmt.Name.Lexeme, value, value)
+	//loxDebug.LogInfo("Storing variable '%s' with value: %v (type: %T)\n", stmt.Name.Lexeme, value, value)
 	i.environment.Define(stmt.Name.Lexeme, value)
 	return nil
 }
 
-func (i *Interpreter) VisitWhileStmt(stmt *ast.While) interface{} {
+func (i *Interpreter) VisitWhileStmt(stmt *ast.While) any {
 	// previous := i.environment
 
 	defer func() {
@@ -261,7 +260,7 @@ func (i *Interpreter) VisitWhileStmt(stmt *ast.While) interface{} {
 	return nil
 }
 
-func (i *Interpreter) VisitAssignExpr(expr *ast.Assign) interface{} {
+func (i *Interpreter) VisitAssignExpr(expr *ast.Assign) any {
 	value := i.evaluate(expr.Value)
 
 	if distance, exists := i.locals[expr]; exists {
@@ -277,7 +276,7 @@ func (i *Interpreter) VisitAssignExpr(expr *ast.Assign) interface{} {
 	return value
 }
 
-func (i *Interpreter) VisitBinaryExpr(expr *ast.Binary) interface{} {
+func (i *Interpreter) VisitBinaryExpr(expr *ast.Binary) any {
 	left := i.evaluate(expr.Left)
 	right := i.evaluate(expr.Right)
 
@@ -327,15 +326,15 @@ func (i *Interpreter) VisitBinaryExpr(expr *ast.Binary) interface{} {
 	return nil
 }
 
-func (i *Interpreter) VisitCallExpr(expr *ast.Call) interface{} {
+func (i *Interpreter) VisitCallExpr(expr *ast.Call) any {
 	callee := i.evaluate(expr.Callee)
 
-	loxDebug.LogInfo("Calling function: %v (type: %T)\n", callee, callee)
+	//loxDebug.LogInfo("Calling function: %v (type: %T)\n", callee, callee)
 
-	var arguments []interface{}
+	var arguments []any
 	for _, argument := range expr.Arguments {
 		evaluatedArg := i.evaluate(argument)
-		loxDebug.LogDebug("Evaluated arguments: %v (type: %T)\n", evaluatedArg, evaluatedArg)
+		//loxDebug.LogDebug("Evaluated arguments: %v (type: %T)\n", evaluatedArg, evaluatedArg)
 		arguments = append(arguments, evaluatedArg)
 	}
 
@@ -350,11 +349,11 @@ func (i *Interpreter) VisitCallExpr(expr *ast.Call) interface{} {
 	}
 
 	result := function.Call(i, arguments)
-	loxDebug.LogDebug("Function returned: %v (type: %T)\n", result, result)
+	//loxDebug.LogDebug("Function returned: %v (type: %T)\n", result, result)
 	return result
 }
 
-func (i *Interpreter) VisitGetExpr(expr *ast.Get) interface{} {
+func (i *Interpreter) VisitGetExpr(expr *ast.Get) any {
 	objekt := i.evaluate(expr.Object)
 	if instance, ok := objekt.(*object.LoxInstance); ok {
 		return instance.Get(expr.Name)
@@ -363,17 +362,17 @@ func (i *Interpreter) VisitGetExpr(expr *ast.Get) interface{} {
 	return loxError.NewRuntimeError(expr.Name, expr.Name.Lexeme, "Only instances have properties.")
 }
 
-func (i *Interpreter) VisitGroupingExpr(expr *ast.Grouping) interface{} {
+func (i *Interpreter) VisitGroupingExpr(expr *ast.Grouping) any {
 	// Handle grouping expressions
 	return i.evaluate(expr.Expression)
 }
 
-func (i *Interpreter) VisitLiteralExpr(expr *ast.Literal) interface{} {
+func (i *Interpreter) VisitLiteralExpr(expr *ast.Literal) any {
 	// Handle literal expressions
 	return expr.Value
 }
 
-func (i *Interpreter) VisitLogicalExpr(expr *ast.Logical) interface{} {
+func (i *Interpreter) VisitLogicalExpr(expr *ast.Logical) any {
 	// Handle logical expressions
 	left := i.evaluate(expr.Left)
 
@@ -390,7 +389,7 @@ func (i *Interpreter) VisitLogicalExpr(expr *ast.Logical) interface{} {
 	return i.evaluate(expr.Right)
 }
 
-func (i *Interpreter) VisitSetExpr(expr *ast.Set) interface{} {
+func (i *Interpreter) VisitSetExpr(expr *ast.Set) any {
 	objekt := i.evaluate(expr.Object)
 
 	if _, ok := objekt.(*object.LoxInstance); !ok {
@@ -402,51 +401,45 @@ func (i *Interpreter) VisitSetExpr(expr *ast.Set) interface{} {
 	return value
 }
 
-func (i *Interpreter) VisitSuperExpr(expr *ast.Super) interface{} {
+func (i *Interpreter) VisitSuperExpr(expr *ast.Super) any {
 	distance, ok := i.locals[expr]
 	if !ok {
 		er := loxError.NewRuntimeError(expr.Keyword, "super", "Cannot resolve 'super' distance.")
 		panic(er)
-		//loxError.ReportAndPanic(er)
 	}
 	superclass, err := i.environment.GetAt(distance, "super")
 	if err != nil {
 		er := loxError.NewRuntimeError(expr.Keyword, "super", "Undefined superclass reference.")
 		panic(er)
-		// loxError.ReportAndPanic(er)
 	}
 	sc, ok := superclass.(*object.LoxClass)
 	if !ok {
 		er := loxError.NewRuntimeError(expr.Keyword, "super", "'super' does not refer to a class.")
 		panic(er)
-		//loxError.ReportAndPanic(er)
 	}
 	objekt, err := i.environment.GetAt(distance-1, "this")
 	if err != nil {
 		er := loxError.NewRuntimeError(expr.Keyword, "this", "Undefined 'this' reference.")
 		panic(er)
-		//loxError.ReportAndPanic(er)
 	}
 	obj, ok := objekt.(*object.LoxInstance)
 	if !ok {
 		er := loxError.NewRuntimeError(expr.Keyword, "this", "'this' is not bound to an instance.")
 		panic(er)
-		//loxError.ReportAndPanic(er)
 	}
 	method, ok := sc.FindMethod(expr.Method.Lexeme)
 	if !ok {
 		er := loxError.NewRuntimeError(expr.Method, expr.Method.Lexeme, fmt.Sprintf("Undefined property '%s'.", expr.Method.Lexeme))
 		panic(er)
-		//loxError.ReportAndPanic(er)
 	}
 	return method.Bind(obj)
 }
 
-func (i *Interpreter) VisitThisExpr(expr *ast.This) interface{} {
+func (i *Interpreter) VisitThisExpr(expr *ast.This) any {
 	return i.lookUpVariable(expr.Keyword, expr)
 }
 
-func (i *Interpreter) VisitUnaryExpr(expr *ast.Unary) interface{} {
+func (i *Interpreter) VisitUnaryExpr(expr *ast.Unary) any {
 	// Handle unary expressions
 	right := i.evaluate(expr.Right)
 
@@ -462,11 +455,11 @@ func (i *Interpreter) VisitUnaryExpr(expr *ast.Unary) interface{} {
 	return nil
 }
 
-func (i *Interpreter) VisitVariableExpr(expr *ast.Variable) interface{} {
+func (i *Interpreter) VisitVariableExpr(expr *ast.Variable) any {
 	return i.lookUpVariable(expr.Name, expr)
 }
 
-func (i *Interpreter) lookUpVariable(name token.Token, expr ast.Expr) interface{} {
+func (i *Interpreter) lookUpVariable(name token.Token, expr ast.Expr) any {
 	if i.environment != nil {
 		val, err := i.environment.Get(name)
 		if err == nil {
@@ -488,39 +481,39 @@ func (i *Interpreter) lookUpVariable(name token.Token, expr ast.Expr) interface{
 	}
 
 	if exists {
-		loxDebug.LogInfo("Looking up local variable '%s' at distance %d\n", name.Lexeme, distance)
+		//loxDebug.LogInfo("Looking up local variable '%s' at distance %d\n", name.Lexeme, distance)
 		res, err := i.environment.GetAt(distance, name.Lexeme)
 		if err != nil {
-			loxDebug.LogError("Error retrieving local variable '%s': %v\n", name.Lexeme, err)
+			//loxDebug.LogError("Error retrieving local variable '%s': %v\n", name.Lexeme, err)
 			err := loxError.NewRuntimeError(name, fmt.Sprintf("%d", name.Line), "Undefined local variable '"+name.Lexeme+"'")
 			panic(err)
 			// loxError.ReportAndPanic(err)
 		}
-		loxDebug.LogDebug("Local variable '%s' resolved to: %v\n", name.Lexeme, res)
+		//loxDebug.LogDebug("Local variable '%s' resolved to: %v\n", name.Lexeme, res)
 		return res
 	}
 
 	// Fallback to globals
-	loxDebug.LogDebug("Variable '%s' not found locally. Checking globals\n", name.Lexeme)
+	//loxDebug.LogDebug("Variable '%s' not found locally. Checking globals\n", name.Lexeme)
 	res, err := i.Globals.Get(name)
 	if err != nil {
-		loxDebug.LogError("Error retrieving global variable '%s': %v\n", name.Lexeme, err)
+		//loxDebug.LogError("Error retrieving global variable '%s': %v\n", name.Lexeme, err)
 		err := loxError.NewRuntimeError(name, fmt.Sprintf("%d", name.Line), "Undefined variable '"+name.Lexeme+"'")
 		panic(err)
 		//loxError.ReportAndPanic(err)
 	}
-	loxDebug.LogDebug("Global variable '%s' resolved to: %v\n", name.Lexeme, res)
+	//loxDebug.LogDebug("Global variable '%s' resolved to: %v\n", name.Lexeme, res)
 	return res
 }
 
-func (i *Interpreter) checkNumberOperand(operator token.Token, operand interface{}) {
+func (i *Interpreter) checkNumberOperand(operator token.Token, operand any) {
 	if _, ok := operand.(float64); ok {
 		return
 	}
 	panic(loxError.NewRuntimeError(operator, fmt.Sprintf("[Line %d]: ", operator.Line), "Operand must be a number."))
 }
 
-func (i *Interpreter) checkNumberOperands(operator token.Token, left interface{}, right interface{}) {
+func (i *Interpreter) checkNumberOperands(operator token.Token, left any, right any) {
 	if _, ok := left.(float64); ok {
 		if _, ok := right.(float64); ok {
 			return
@@ -529,7 +522,7 @@ func (i *Interpreter) checkNumberOperands(operator token.Token, left interface{}
 	panic(loxError.NewRuntimeError(operator, fmt.Sprintf("[Line %d]: ", operator.Line), "Operands must be two numbers."))
 }
 
-func (i *Interpreter) isTruthy(object interface{}) bool {
+func (i *Interpreter) isTruthy(object any) bool {
 	if object == nil {
 		return false
 	}
@@ -539,7 +532,7 @@ func (i *Interpreter) isTruthy(object interface{}) bool {
 	return true
 }
 
-func (i *Interpreter) isEqual(a interface{}, b interface{}) bool {
+func (i *Interpreter) isEqual(a any, b any) bool {
 	if a == nil && b == nil {
 		return true
 	}
@@ -551,7 +544,7 @@ func (i *Interpreter) isEqual(a interface{}, b interface{}) bool {
 }
 
 // stringify converts an evaluated object into a human-readable string
-func (i *Interpreter) stringify(object interface{}) string {
+func (i *Interpreter) stringify(object any) string {
 	if object == nil {
 		return "nil"
 	}

@@ -17,7 +17,7 @@ type LoxError struct {
 
 // Error implements the error interface for RuntimeError.
 func (e *LoxError) Error() string {
-	return fmt.Sprintf("[line %d] Error at %s: %s", e.Line, e.Where, e.Message)
+	return fmt.Sprintf("[line %d] Error at '%s': %s", e.Line, e.Where, e.Message)
 }
 
 // NewParseError creates a parse error (non-fatal)

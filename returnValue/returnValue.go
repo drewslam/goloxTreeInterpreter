@@ -1,5 +1,5 @@
 package returnValue
 
 type ReturnValue struct {
-	Value interface{}
+	Value any
 }

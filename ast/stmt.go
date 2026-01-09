@@ -5,19 +5,19 @@ import (
 )
 
 type Stmt interface {
-	Accept(visitor StmtVisitor) interface{}
+	Accept(visitor StmtVisitor) any
 }
 
 type StmtVisitor interface {
-	VisitBlockStmt(stmt *Block) interface{}
-	VisitClassStmt(stmt *Class) interface{}
-	VisitExpressionStmt(stmt *Expression) interface{}
-	VisitFunctionStmt(stmt *Function) interface{}
-	VisitIfStmt(stmt *If) interface{}
-	VisitPrintStmt(stmt *Print) interface{}
-	VisitReturnStmt(stmt *Return) interface{}
-	VisitVarStmt(stmt *Var) interface{}
-	VisitWhileStmt(stmt *While) interface{}
+	VisitBlockStmt(stmt *Block) any
+	VisitClassStmt(stmt *Class) any
+	VisitExpressionStmt(stmt *Expression) any
+	VisitFunctionStmt(stmt *Function) any
+	VisitIfStmt(stmt *If) any
+	VisitPrintStmt(stmt *Print) any
+	VisitReturnStmt(stmt *Return) any
+	VisitVarStmt(stmt *Var) any
+	VisitWhileStmt(stmt *While) any
 }
 
 // Block type
@@ -25,7 +25,7 @@ type Block struct {
 	Statements []Stmt
 }
 
-func (stmt *Block) Accept(visitor StmtVisitor) interface{} {
+func (stmt *Block) Accept(visitor StmtVisitor) any {
 	if visitor == nil {
 		return nil
 	}
@@ -43,7 +43,7 @@ type Class struct {
 	Methods    []*Function
 }
 
-func (stmt *Class) Accept(visitor StmtVisitor) interface{} {
+func (stmt *Class) Accept(visitor StmtVisitor) any {
 	if visitor == nil {
 		return nil
 	}
@@ -64,7 +64,7 @@ type Expression struct {
 	Expr Expr
 }
 
-func (stmt *Expression) Accept(visitor StmtVisitor) interface{} {
+func (stmt *Expression) Accept(visitor StmtVisitor) any {
 	if visitor == nil {
 		return nil
 	}
@@ -82,7 +82,7 @@ type Function struct {
 	Body   []Stmt
 }
 
-func (stmt *Function) Accept(visitor StmtVisitor) interface{} {
+func (stmt *Function) Accept(visitor StmtVisitor) any {
 	if visitor == nil {
 		return nil
 	}
@@ -104,7 +104,7 @@ type If struct {
 	ElseBranch Stmt
 }
 
-func (stmt *If) Accept(visitor StmtVisitor) interface{} {
+func (stmt *If) Accept(visitor StmtVisitor) any {
 	if visitor == nil {
 		return nil
 	}
@@ -124,7 +124,7 @@ type Print struct {
 	Expr Expr
 }
 
-func (stmt *Print) Accept(visitor StmtVisitor) interface{} {
+func (stmt *Print) Accept(visitor StmtVisitor) any {
 	if visitor == nil {
 		return nil
 	}
@@ -141,7 +141,7 @@ type Return struct {
 	Value   Expr
 }
 
-func (stmt *Return) Accept(visitor StmtVisitor) interface{} {
+func (stmt *Return) Accept(visitor StmtVisitor) any {
 	if visitor == nil {
 		return nil
 	}
@@ -154,7 +154,7 @@ type Var struct {
 	Initializer Expr
 }
 
-func (stmt *Var) Accept(visitor StmtVisitor) interface{} {
+func (stmt *Var) Accept(visitor StmtVisitor) any {
 	if visitor == nil {
 		return nil
 	}
@@ -174,7 +174,7 @@ type While struct {
 	Body      Stmt
 }
 
-func (stmt *While) Accept(visitor StmtVisitor) interface{} {
+func (stmt *While) Accept(visitor StmtVisitor) any {
 	if visitor == nil {
 		return nil
 	}

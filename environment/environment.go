@@ -3,14 +3,13 @@ package environment
 import (
 	"fmt"
 
-	"github.com/drewslam/goloxTreeInterpreter/loxDebug"
 	"github.com/drewslam/goloxTreeInterpreter/loxError"
 	"github.com/drewslam/goloxTreeInterpreter/token"
 )
 
 type Environment struct {
 	Enclosing *Environment
-	Values    map[string]interface{}
+	Values    map[string]any
 }
 
 func NewEnvironment(enclosing ...*Environment) *Environment {
@@ -21,11 +20,11 @@ func NewEnvironment(enclosing ...*Environment) *Environment {
 
 	return &Environment{
 		Enclosing: parent,
-		Values:    make(map[string]interface{}),
+		Values:    make(map[string]any),
 	}
 }
 
-func (e *Environment) Get(name token.Token) (interface{}, *loxError.LoxError) {
+func (e *Environment) Get(name token.Token) (any, *loxError.LoxError) {
 	if value, exists := e.Values[name.Lexeme]; exists {
 		return value, nil
 	}
@@ -39,7 +38,7 @@ func (e *Environment) Get(name token.Token) (interface{}, *loxError.LoxError) {
 	return nil, loxError.NewRuntimeError(name, fmt.Sprintf("%d", name.Line), errMsg)
 }
 
-func (e *Environment) Assign(name token.Token, value interface{}) *loxError.LoxError {
+func (e *Environment) Assign(name token.Token, value any) *loxError.LoxError {
 	if _, ok := e.Values[name.Lexeme]; ok {
 		e.Values[name.Lexeme] = value
 		return nil
@@ -54,7 +53,7 @@ func (e *Environment) Assign(name token.Token, value interface{}) *loxError.LoxE
 	return loxError.NewRuntimeError(name, fmt.Sprintf("%d", name.Line), errMsg)
 }
 
-func (e *Environment) Define(name string, value interface{}) {
+func (e *Environment) Define(name string, value any) {
 	e.Values[name] = value
 }
 
@@ -69,27 +68,27 @@ func (e *Environment) Ancestor(distance int) (*Environment, error) {
 	return environment, nil
 }
 
-func (e *Environment) GetAt(distance int, name string) (interface{}, error) {
-	loxDebug.LogDebug("Attempting to get '%s' at distance %d\n", name, distance)
+func (e *Environment) GetAt(distance int, name string) (any, error) {
+	//loxDebug.LogDebug("Attempting to get '%s' at distance %d\n", name, distance)
 
 	ancestor, err := e.Ancestor(distance)
 	if err != nil {
-		loxDebug.LogError("Error retrieving ancestor at distance %d: %v\n", distance, err)
+		//loxDebug.LogError("Error retrieving ancestor at distance %d: %v\n", distance, err)
 		return nil, err
 	}
-	loxDebug.LogDebug("Retrieved ancestor environment: %+v\n", ancestor.Values)
+	//loxDebug.LogDebug("Retrieved ancestor environment: %+v\n", ancestor.Values)
 
 	value, exists := ancestor.Values[name]
 	if !exists {
-		loxDebug.LogError("Variable '%s' not found in ancestor environment at distance %d\n", name, distance)
+		//loxDebug.LogError("Variable '%s' not found in ancestor environment at distance %d\n", name, distance)
 		return nil, fmt.Errorf("Undefined variable '%s'", name)
 	}
 
-	loxDebug.LogInfo("Variable '%s' found at distance %d: %v\n", name, distance, value)
+	//loxDebug.LogInfo("Variable '%s' found at distance %d: %v\n", name, distance, value)
 	return value, nil
 }
 
-func (e *Environment) AssignAt(distance int, name token.Token, value interface{}) error {
+func (e *Environment) AssignAt(distance int, name token.Token, value any) error {
 	ancestor, err := e.Ancestor(distance)
 	if err != nil {
 		return err

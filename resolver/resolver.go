@@ -5,7 +5,6 @@ import (
 
 	"github.com/drewslam/goloxTreeInterpreter/ast"
 	"github.com/drewslam/goloxTreeInterpreter/interpreter"
-	"github.com/drewslam/goloxTreeInterpreter/loxDebug"
 	"github.com/drewslam/goloxTreeInterpreter/loxError"
 	"github.com/drewslam/goloxTreeInterpreter/token"
 )
@@ -62,14 +61,14 @@ func (r *Resolver) Resolve(statements []ast.Stmt) *loxError.LoxError {
 	return nil
 }
 
-func (r *Resolver) VisitBlockStmt(stmt *ast.Block) interface{} {
+func (r *Resolver) VisitBlockStmt(stmt *ast.Block) any {
 	r.beginScope()
 	r.Resolve(stmt.Statements)
 	r.endScope()
 	return nil
 }
 
-func (r *Resolver) VisitClassStmt(stmt *ast.Class) interface{} {
+func (r *Resolver) VisitClassStmt(stmt *ast.Class) any {
 	enclosingClass := r.currentClass
 	r.currentClass = CLASS
 
@@ -77,7 +76,7 @@ func (r *Resolver) VisitClassStmt(stmt *ast.Class) interface{} {
 	r.define(stmt.Name)
 
 	if stmt.Superclass != nil && stmt.Name.Lexeme == stmt.Superclass.Name.Lexeme {
-		err := loxError.NewParseError(stmt.Superclass.Name, "A class cannot inherit from itself.")
+		err := loxError.NewParseError(stmt.Superclass.Name, "A class can't inherit from itself.")
 		loxError.ReportError(err)
 		return nil
 	}
@@ -112,12 +111,12 @@ func (r *Resolver) VisitClassStmt(stmt *ast.Class) interface{} {
 	return nil
 }
 
-func (r *Resolver) VisitExpressionStmt(stmt *ast.Expression) interface{} {
+func (r *Resolver) VisitExpressionStmt(stmt *ast.Expression) any {
 	r.resolve(stmt.Expr)
 	return nil
 }
 
-func (r *Resolver) VisitFunctionStmt(stmt *ast.Function) interface{} {
+func (r *Resolver) VisitFunctionStmt(stmt *ast.Function) any {
 	r.declare(stmt.Name)
 	r.define(stmt.Name)
 
@@ -125,7 +124,7 @@ func (r *Resolver) VisitFunctionStmt(stmt *ast.Function) interface{} {
 	return nil
 }
 
-func (r *Resolver) VisitIfStmt(stmt *ast.If) interface{} {
+func (r *Resolver) VisitIfStmt(stmt *ast.If) any {
 	r.resolve(stmt.Condition)
 	r.resolve(stmt.ThenBranch)
 	if stmt.ElseBranch != nil {
@@ -134,19 +133,25 @@ func (r *Resolver) VisitIfStmt(stmt *ast.If) interface{} {
 	return nil
 }
 
-func (r *Resolver) VisitPrintStmt(stmt *ast.Print) interface{} {
+func (r *Resolver) VisitPrintStmt(stmt *ast.Print) any {
 	r.resolve(stmt.Expr)
 	return nil
 }
 
-func (r *Resolver) VisitReturnStmt(stmt *ast.Return) interface{} {
+func (r *Resolver) VisitReturnStmt(stmt *ast.Return) any {
 	if r.CurrentFunction == NOT_FUNCTION {
-		return loxError.NewRuntimeError(stmt.Keyword, fmt.Sprintf("[Line %d]: ", stmt.Keyword.Line), "Can't return from top level code.'")
+		err := loxError.NewParseError(stmt.Keyword, "Can't return from top level code.")
+		panic(err)
+		// loxError.ReportError(err)
+		// return nil
 	}
 
 	if stmt.Value != nil {
 		if r.CurrentFunction == INITIALIZER {
-			return loxError.NewRuntimeError(stmt.Keyword, fmt.Sprintf("[Line %d]: ", stmt.Keyword.Line), "Can't return a value from an initializer.")
+			err := loxError.NewParseError(stmt.Keyword, "Can't return a value from an initializer.")
+			panic(err)
+			//loxError.ReportError(err)
+			//return nil
 		}
 
 		r.resolve(stmt.Value)
@@ -154,7 +159,7 @@ func (r *Resolver) VisitReturnStmt(stmt *ast.Return) interface{} {
 	return nil
 }
 
-func (r *Resolver) resolve(input interface{}) {
+func (r *Resolver) resolve(input any) {
 	if len(r.scopes) == 0 {
 		r.beginScope()
 	}
@@ -213,7 +218,9 @@ func (r *Resolver) declare(name token.Token) *loxError.LoxError {
 	if scope, ok := peek(r.scopes); ok {
 		scope[name.Lexeme] = false
 	} else {
-		return loxError.NewRuntimeError(name, fmt.Sprintf("[Line %d]: ", name.Line), "Already a variable with this name in this scope.")
+		err := loxError.NewRuntimeError(name, name.Lexeme, "Already a variable with this name in this scope.")
+		loxError.ReportAndPanic(err)
+		return nil
 	}
 
 	return nil
@@ -235,18 +242,17 @@ func (r *Resolver) resolveLocal(expr ast.Expr, name token.Token) {
 		if _, ok := r.scopes[i][name.Lexeme]; ok {
 			depth := len(r.scopes) - 1 - i
 			if i == 0 {
-				loxDebug.LogInfo("Variable '%s' correctly marked as global\n", name.Lexeme)
+				//loxDebug.LogInfo("Variable '%s' correctly marked as global\n", name.Lexeme)
 			}
-			loxDebug.LogInfo("Resolving variable '%s' as local at depth %d\n", name.Lexeme, depth)
+			//loxDebug.LogInfo("Resolving variable '%s' as local at depth %d\n", name.Lexeme, depth)
 			r.Interpreter.Resolve(expr, depth)
-			// r.Interpreter.StoreResolution(expr, depth)
 			return
 		}
 	}
-	loxDebug.LogInfo("Variable '%s' is treated as global\n", name.Lexeme)
+	//loxDebug.LogInfo("Variable '%s' is treated as global\n", name.Lexeme)
 }
 
-func (r *Resolver) VisitVarStmt(stmt *ast.Var) interface{} {
+func (r *Resolver) VisitVarStmt(stmt *ast.Var) any {
 	r.declare(stmt.Name)
 	if stmt.Initializer != nil {
 		r.resolve(stmt.Initializer)
@@ -255,13 +261,13 @@ func (r *Resolver) VisitVarStmt(stmt *ast.Var) interface{} {
 	return nil
 }
 
-func (r *Resolver) VisitWhileStmt(stmt *ast.While) interface{} {
+func (r *Resolver) VisitWhileStmt(stmt *ast.While) any {
 	r.resolve(stmt.Condition)
 	r.resolve(stmt.Body)
 	return nil
 }
 
-func (r *Resolver) VisitAssignExpr(expr *ast.Assign) interface{} {
+func (r *Resolver) VisitAssignExpr(expr *ast.Assign) any {
 	r.resolve(expr.Value)
 
 	if expr.Name.Lexeme == "this" {
@@ -273,13 +279,13 @@ func (r *Resolver) VisitAssignExpr(expr *ast.Assign) interface{} {
 	return nil
 }
 
-func (r *Resolver) VisitBinaryExpr(expr *ast.Binary) interface{} {
+func (r *Resolver) VisitBinaryExpr(expr *ast.Binary) any {
 	r.resolve(expr.Left)
 	r.resolve(expr.Right)
 	return nil
 }
 
-func (r *Resolver) VisitCallExpr(expr *ast.Call) interface{} {
+func (r *Resolver) VisitCallExpr(expr *ast.Call) any {
 	r.resolve(expr.Callee)
 	for _, argument := range expr.Arguments {
 		r.resolve(argument)
@@ -287,33 +293,33 @@ func (r *Resolver) VisitCallExpr(expr *ast.Call) interface{} {
 	return nil
 }
 
-func (r *Resolver) VisitGetExpr(expr *ast.Get) interface{} {
+func (r *Resolver) VisitGetExpr(expr *ast.Get) any {
 	r.resolve(expr.Object)
 	return nil
 }
 
-func (r *Resolver) VisitGroupingExpr(expr *ast.Grouping) interface{} {
+func (r *Resolver) VisitGroupingExpr(expr *ast.Grouping) any {
 	r.resolve(expr.Expression)
 	return nil
 }
 
-func (r *Resolver) VisitLiteralExpr(expr *ast.Literal) interface{} {
+func (r *Resolver) VisitLiteralExpr(expr *ast.Literal) any {
 	return nil
 }
 
-func (r *Resolver) VisitLogicalExpr(expr *ast.Logical) interface{} {
+func (r *Resolver) VisitLogicalExpr(expr *ast.Logical) any {
 	r.resolve(expr.Left)
 	r.resolve(expr.Right)
 	return nil
 }
 
-func (r *Resolver) VisitSetExpr(expr *ast.Set) interface{} {
+func (r *Resolver) VisitSetExpr(expr *ast.Set) any {
 	r.resolve(expr.Value)
 	r.resolve(expr.Object)
 	return nil
 }
 
-func (r *Resolver) VisitSuperExpr(expr *ast.Super) interface{} {
+func (r *Resolver) VisitSuperExpr(expr *ast.Super) any {
 	if r.currentClass == NOT_CLASS {
 		err := loxError.NewRuntimeError(expr.Keyword, "super", "Can't use 'super' outside of a class.")
 		loxError.ReportAndPanic(err)
@@ -328,7 +334,7 @@ func (r *Resolver) VisitSuperExpr(expr *ast.Super) interface{} {
 	return nil
 }
 
-func (r *Resolver) VisitThisExpr(expr *ast.This) interface{} {
+func (r *Resolver) VisitThisExpr(expr *ast.This) any {
 	if r.currentClass == NOT_CLASS {
 		return loxError.NewRuntimeError(expr.Keyword, fmt.Sprintf("[Line %d]: ", expr.Keyword.Line), "Can't use 'this' outside of a class.")
 	}
@@ -337,13 +343,13 @@ func (r *Resolver) VisitThisExpr(expr *ast.This) interface{} {
 	return nil
 }
 
-func (r *Resolver) VisitUnaryExpr(expr *ast.Unary) interface{} {
+func (r *Resolver) VisitUnaryExpr(expr *ast.Unary) any {
 	r.resolve(expr.Right)
 	return nil
 }
 
-func (r *Resolver) VisitVariableExpr(expr *ast.Variable) interface{} {
-	loxDebug.LogDebug("Current scopes:", r.scopes)
+func (r *Resolver) VisitVariableExpr(expr *ast.Variable) any {
+	//loxDebug.LogDebug("Current scopes:", r.scopes)
 
 	if len(r.scopes) > 0 {
 		if scope, ok := peek(r.scopes); ok {

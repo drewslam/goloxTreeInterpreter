@@ -6,13 +6,13 @@ import (
 )
 
 type Interpreter interface {
-	ExecuteBlock(statements []ast.Stmt, environment *environment.Environment) interface{}
+	ExecuteBlock(statements []ast.Stmt, environment *environment.Environment) any
 	GetGlobals() *environment.Environment
 }
 
 type LoxCallable interface {
 	Arity() int
-	Call(interpreter Interpreter, arguments []interface{}) interface{}
+	Call(interpreter Interpreter, arguments []any) any
 	String() string
 }
 

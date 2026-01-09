@@ -4,7 +4,7 @@ An interpreted, dynamically typed, object-oriented scripting language based off 
 
 ## Features
 
-- Lexical parsing, scanning, and tokenization. 
+- Lexical parsing, scanning, and tokenization.
 - Classes
 - Inheritance
 - Recursive tree-walk interpretation
