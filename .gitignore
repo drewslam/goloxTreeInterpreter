@@ -1,8 +1,9 @@
 *.lox
+Lox
+
 *.sh
 *.py
 *.txt
-souzaphonix
-*.pub
-Lox
+
+logs/
 .dlv/
